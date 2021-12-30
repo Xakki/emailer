@@ -1,0 +1,8 @@
+/.idea
+/example/tmp/
+composer.phar
+/vendor/
+_composer.json
+*.cache
+.env
+.phpcs-cache

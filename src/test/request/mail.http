@@ -1,0 +1,17 @@
+
+### home
+
+# @no-redirect
+GET {{host}}/home/{{key}}
+Content-Type: application/json
+Accept: text/html
+User-Agent: emailer
+Cookie: XDEBUG_SESSION=PHPSTORM
+
+### goto
+
+GET {{host}}/goto/{{key}}/aHR0cDovL3VuaWRvc2tpLnJ1L2J1eXVwL0t1cGx5dV9za3Vwa2Ffdl9Vc3RfQWJha2Fuc2tpeV9yYXlvbl9aYWt1cGFlbV9Qb2xpbWV0aWxtZXRha3JpbGF0X3BtbWFfUE1NQV92X2x5dWJvbS0zMzk1NDU
+Content-Type: application/json
+Accept: text/html
+User-Agent: emailer
+Cookie: XDEBUG_SESSION=PHPSTORM

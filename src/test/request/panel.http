@@ -1,0 +1,24 @@
+# auth
+
+POST {{host}}/api/v1/panel/login
+Content-Type: application/json
+Accept: application/json
+User-Agent: emailer
+Cookie: XDEBUG_SESSION=PHPSTORM
+
+{
+  "login": "{{login}}",
+  "pass": "{{pass}}"
+}
+
+> {%
+    client.global.set("xToken", response.body.data.xToken);
+%}
+
+#### 
+
+GET {{host}}/api/v1/panel/head
+Content-Type: application/json
+Accept: application/json
+User-Agent: emailer
+Cookie: XDEBUG_SESSION=PHPSTORM
