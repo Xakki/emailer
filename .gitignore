@@ -2,7 +2,7 @@
 /example/tmp/
 composer.phar
 /vendor/
-_composer.json
+composer.lock
 *.cache
 .env
 .phpcs-cache

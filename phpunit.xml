@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="src/test/phpunit/bootstrap.php"
+         verbose="false"
+         colors="true"
+         convertErrorsToExceptions="true"
+         convertNoticesToExceptions="true"
+         convertWarningsToExceptions="true"
+>
+    <testsuite name="src">
+        <directory>src/test/phpunit/</directory>
+    </testsuite>
+    <logging>
+        <log type="testdox-text" target="php://stdout"/>
+    </logging>
+</phpunit>

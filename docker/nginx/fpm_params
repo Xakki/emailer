@@ -1,0 +1,18 @@
+fastcgi_buffering  on;
+fastcgi_buffer_size 64K;
+fastcgi_buffers 32 64k;
+fastcgi_max_temp_file_size 0;
+
+fastcgi_pass emailer-php:9000;
+
+fastcgi_index index.php;
+fastcgi_param           PATH_INFO               $fastcgi_path_info;
+fastcgi_param           SCRIPT_FILENAME         /app/public/index.php;
+fastcgi_intercept_errors on;
+
+# Директива задаёт таймаут для соединения с проксированным сервером, сек
+fastcgi_connect_timeout 900;
+# Директива задаёт таймаут при передаче запроса проксированному серверу, сек
+fastcgi_send_timeout    900;
+# Директива задаёт таймаут при чтении ответа проксированного сервера, сек
+fastcgi_read_timeout    900;

@@ -1,0 +1,280 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Emailer API",
+        "version": "0.1.0"
+    },
+    "servers": [
+        {
+            "url": "/api/v1"
+        }
+    ],
+    "paths": {
+        "/panel/login": {
+            "post": {
+                "tags": [
+                    "Admin Panel"
+                ],
+                "summary": "Panel authorization",
+                "operationId": "Xakki\\Emailer\\Controller\\Api\\Panel::actionLogin",
+                "requestBody": {
+                    "description": "Post data",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "login": {
+                                        "description": "Admin login",
+                                        "type": "string"
+                                    },
+                                    "pass": {
+                                        "description": "Admin password",
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthSuccess"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "info": "API version: v1",
+                                    "success": false,
+                                    "data": [],
+                                    "message": "Auth failed: Wrong pass or login."
+                                }
+                            }
+                        }
+                    },
+                    "450": {
+                        "description": "Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/panel/menu": {
+            "get": {
+                "tags": [
+                    "Admin Panel"
+                ],
+                "summary": "Panel head: menu, info, etc",
+                "operationId": "Xakki\\Emailer\\Controller\\Api\\Panel::actionHead",
+                "parameters": [
+                    {
+                        "name": "x-token",
+                        "in": "header",
+                        "description": "ApiToken",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HeadSuccess"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/panel/dashboard": {
+            "get": {
+                "tags": [
+                    "Admin Panel"
+                ],
+                "summary": "Index dashboard page",
+                "operationId": "Xakki\\Emailer\\Controller\\Api\\Panel::actionDashboard",
+                "parameters": [
+                    {
+                        "name": "x-token",
+                        "in": "header",
+                        "description": "ApiToken",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Success"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/smtp/test": {
+            "get": {
+                "tags": [
+                    "Smtp"
+                ],
+                "summary": "Test",
+                "operationId": "Xakki\\Emailer\\Controller\\Api\\Smtp::actionTest",
+                "parameters": [
+                    {
+                        "name": "x-token",
+                        "in": "header",
+                        "description": "ApiToken",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Success"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Success": {
+                "properties": {
+                    "success": {
+                        "type": "bool",
+                        "default": true
+                    },
+                    "data": {
+                        "type": "mixed"
+                    }
+                },
+                "type": "object"
+            },
+            "Error": {
+                "example": {
+                    "info": "API version: v1",
+                    "success": false,
+                    "data": [],
+                    "message": "Some error message"
+                }
+            },
+            "ValidationError": {
+                "example": {
+                    "info": "API version: v1",
+                    "success": false,
+                    "data": {
+                        "fieldName1": "Error message",
+                        "fieldName2": "Error message"
+                    },
+                    "message": "Validation errors"
+                }
+            },
+            "AuthSuccess": {
+                "properties": {
+                    "success": {
+                        "type": "bool",
+                        "default": true
+                    },
+                    "data": {
+                        "type": "object",
+                        "example": {
+                            "lifetime": "2022-05-09T02:42:12+03:00",
+                            "xToken": "ef88f02fc1ef792f4f4c2105533bc0a0",
+                            "hasOldAuth": false
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "HeadSuccess": {
+                "properties": {
+                    "success": {
+                        "type": "bool",
+                        "default": true
+                    },
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/HeadData"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "HeadData": {
+                "properties": {
+                    "menu": {
+                        "description": "Menu",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "user": {
+                        "description": "User info",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/User"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "User": {
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "securitySchemes": {
+            "token": {
+                "type": "apiKey",
+                "name": "Authorization",
+                "in": "header"
+            }
+        }
+    }
+}

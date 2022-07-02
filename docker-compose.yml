@@ -1,0 +1,95 @@
+version: "3.5"
+services:
+    php:
+        build:
+            context: docker/php
+            dockerfile: Dockerfile
+        container_name: emailer-php
+        working_dir: /app
+        volumes:
+            - ./:/app
+        environment:
+            - ENV=${ENV}
+            - EMAILER_API=${EMAILER_API}
+            - SWAGGER_UI=${SWAGGER_UI}
+            - MARIADB_HOST=emailer-mariadb
+            - MARIADB_PORT=3306
+            - MARIADB_DATABASE=${MARIADB_DATABASE:-emailer}
+            - MARIADB_USER=${MARIADB_USER:-emailer}
+            - MARIADB_PASSWORD=${MARIADB_PASSWORD}
+            - REDIS_HOST=emailer-redis
+            - REDIS_PORT=6379
+        ports:
+            - "${PORT_PHP:-9000}:9000"
+        restart: "no"
+        networks:
+            - default
+
+    mariadb:
+        image: mariadb:10.5
+        container_name: emailer-mariadb
+        working_dir: /backup
+        volumes:
+            - mydb:/var/lib/mysql
+            - ./docker/backup_db:/backup
+            - ./docker/${CFG_DB:-mariadb}/mariadb.cnf:/etc/mysql/conf.d/mariadb.cnf
+            #- ./docker/${CFG_DB:-mariadb}/50-mysqld_safe.cnf:/etc/mysql/mariadb.conf.d/50-mysqld_safe.cnf
+        environment:
+            MARIADB_DATABASE: ${MARIADB_DATABASE:-emailer}
+            MARIADB_USER: ${MARIADB_USER:-emailer}
+            MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+            MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+        ports:
+            - "${PORT_DB:-10002}:3306"
+        restart: "no"
+        networks:
+            - default
+
+    nginx:
+        image: nginx:latest
+        container_name: emailer-nginx
+        working_dir: /app
+        volumes:
+            - ./src/public:/app
+            - ./docker/${CFG_NGINX:-nginx}/default.conf:/etc/nginx/conf.d/default.conf
+            - ./docker/${CFG_NGINX:-nginx}/static_params:/etc/nginx/static_params
+            - ./docker/${CFG_NGINX:-nginx}/fpm_params:/etc/nginx/fpm_params
+            - ./docker/${CFG_NGINX:-nginx}/ssl:/etc/nginx/ssl
+        environment:
+            - ENV=${ENV}
+            - APPLICATION_URL=${URL}
+        ports:
+            - "${PORT_HTTP:-80}:80"
+            - "${PORT_HTTPS:-443}:443"
+        restart: "no"
+        networks:
+            - default
+        depends_on:
+            - php
+
+    redis:
+        image: redis:alpine
+        container_name: emailer-redis
+        restart: "on-failure"
+        networks:
+            - default
+
+#    swagger-ui:
+#        image: swaggerapi/swagger-ui
+#        container_name: "swagger-ui"
+#        ports:
+#            - "8082:8080"
+#        volumes:
+#           - ./swagger/openapi.json:/openapi.json
+#        environment:
+#            SWAGGER_JSON: /openapi.json
+#            # API_URL: ""
+
+
+volumes:
+  mydb:
+    name: emailer-mydb
+
+networks:
+  default:
+    name: default-network

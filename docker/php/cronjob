@@ -1,0 +1,5 @@
+## Unidoski
+SHELL=/bin/bash
+BASH_ENV=/etc/environment
+
+* * * * * php /app/public/console.php emailer send > /dev/null

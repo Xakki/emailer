@@ -1,0 +1,11 @@
+#!/usr/bin/env php
+<?php
+
+require_once __DIR__.'/vendor/autoload.php';
+
+use Xakki\Emailer;
+
+$config = new Emailer\ConfigService(include __DIR__ . '/config/' . getenv('ENV') . '.php');
+$logger = new Emailer\test\phpunit\Logger();
+$emailer = new Emailer\Emailer($config, $logger);
+echo PHP_EOL . $emailer->dispatchConsole(array_slice($_SERVER['argv'], 1)) . PHP_EOL;

@@ -1,0 +1,11 @@
+parameters:
+    parallel:
+        processTimeout: 600.0
+    phpVersion: 80100
+    level: 6
+    paths:
+        - src
+#    excludePaths:
+#        - src/test
+#    ignoreErrors:
+#        - '#test#'
