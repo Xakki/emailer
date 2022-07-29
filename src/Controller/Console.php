@@ -25,7 +25,7 @@ class Console extends AbstractController
 //            $db->setAutoCommit(false);
 //            $db->beginTransaction();
             try {
-                $status = (new ExecuteQueue())->handler();
+                $status = (new ExecuteQueue($this->emailer))->handler();
                 $mess = Queue::TITLE_QUEUE_STATUS[$status];
 //                $db->commit();
             } catch (DataNotFound $e) {

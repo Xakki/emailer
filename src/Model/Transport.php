@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Xakki\Emailer\Model;
 
+use Xakki\Emailer\Emailer;
 use Xakki\Emailer\Repository;
 use Xakki\Emailer\Transports\AbstractTransport;
 
@@ -26,9 +27,9 @@ class Transport extends AbstractModel
         return Repository\Transport::class;
     }
 
-    public function getSmtpTransport(): AbstractTransport
+    public function getSmtpTransport(Emailer $emailer): AbstractTransport
     {
-        return AbstractTransport::fromString($this->params);
+        return AbstractTransport::fromString($this->params, $emailer);
     }
 
     public function incCntDay(): self

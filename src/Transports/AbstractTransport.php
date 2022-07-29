@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Xakki\Emailer\Transports;
 
+use Xakki\Emailer\Emailer;
 use Xakki\Emailer\Model\Queue;
 
 abstract class AbstractTransport implements \Stringable
@@ -87,6 +88,13 @@ abstract class AbstractTransport implements \Stringable
         'SMTP server error' => Queue::QUEUE_STATUS_TEMP_ERROR,
     ];
 
+    protected Emailer $emailer;
+
+    public function __construct(Emailer $emailer)
+    {
+        $this->emailer = $emailer;
+    }
+
     public function getSmtpErrorStatus(string $mess): int
     {
         // https://yandex.ru/support/mail-new/web/letter/create.html
@@ -101,12 +109,12 @@ abstract class AbstractTransport implements \Stringable
         return Queue::QUEUE_STATUS_ERROR;
     }
 
-    public static function fromString(string $json): self
+    public static function fromString(string $json, Emailer $emailer): self
     {
         $json = json_decode($json, true);
-        $class = new $json['class']();
+        $class = new $json['class']($emailer);
         if (!$class instanceof self) {
-            throw new \Exception('Must be Trabsport instanse.');
+            throw new \Exception('Must be Transport instance.');
         }
         foreach ($json['prop'] as $k => $v) {
             $class->{$k} = $v;

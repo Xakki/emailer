@@ -21,7 +21,7 @@ class Queue extends AbstractRepository
             'status' => static::TYPE_INT,
             'retry' => static::TYPE_INT,
             'project_id' => static::TYPE_INT,
-            'campany_id' => static::TYPE_INT,
+            'campaign_id' => static::TYPE_INT,
             'notify_id' => static::TYPE_INT,
             'email_id' => static::TYPE_INT,
         ];

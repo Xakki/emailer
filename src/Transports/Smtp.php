@@ -142,7 +142,7 @@ class Smtp extends AbstractTransport
 
         if ($this->debug) {
             $phpMailer->SMTPDebug = $this->debug;
-            $phpMailer->Debugoutput = Emailer::getLoggerOld();
+            $phpMailer->Debugoutput = $this->emailer->getLogger();
         }
 
         if (!empty($mail->getReplyTo())) {
@@ -182,15 +182,15 @@ class Smtp extends AbstractTransport
 
         if ($phpMailer->ErrorInfo) {
             $this->errorMessage = $phpMailer->ErrorInfo;
-            Emailer::getLoggerOld()->error('ErrorInfo : ' . $phpMailer->ErrorInfo . PHP_EOL . $html, $logContext);
+            $this->emailer->getLogger()->error('ErrorInfo : ' . $phpMailer->ErrorInfo . PHP_EOL . $html, $logContext);
         } elseif ($this->debug && $html) {
-            Emailer::getLoggerOld()->debug($html, $logContext);
+            $this->emailer->getLogger()->debug($html, $logContext);
         }
 
         $startTime = time() - $startTime;
         if ($startTime > $this->slowTime) {
             $logContext['duration'] = $startTime;
-            Emailer::getLoggerOld()->notice('Slow', $logContext);
+            $this->emailer->getLogger()->notice('Slow', $logContext);
         }
         if (!$result) {
             return $this->getSmtpErrorStatus($phpMailer->ErrorInfo);

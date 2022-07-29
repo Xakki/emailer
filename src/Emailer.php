@@ -27,7 +27,7 @@ class Emailer
     }
 
     /**
-     * GLobal access for Emailer object
+     * Global access for Emailer object
      *
      * @return self
      * @throws Exception\Exception
@@ -44,11 +44,6 @@ class Emailer
     public function __wakeup()
     {
         throw new Exception\Exception("Cannot unserialize a singleton.");
-    }
-
-    public static function getLoggerOld(): LoggerInterface
-    {
-        return static::i()->logger;
     }
 
     public function getLogger(): LoggerInterface
@@ -109,13 +104,13 @@ class Emailer
 
     /**
      * @param int $projectId
-     * @param int $campanyId
+     * @param int $campaignId
      * @return Sender
      * @throws Exception\DataNotFound
      */
-    public function getNewSender(int $projectId, int $campanyId): Sender
+    public function getNewSender(int $projectId, int $campaignId): Sender
     {
-        return new Sender($this, $projectId, $campanyId);
+        return new Sender($this, $projectId, $campaignId);
     }
 
     public function getNewMail(): Mail

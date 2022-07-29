@@ -23,7 +23,7 @@ $emailer = new Emailer($config, $logger);
 $tplDir = __DIR__ . '/../tpl/';
 try {
     $emailer->getProject($projectId);
-    $campany = Model\Campany::findOne(['project_id' => $projectId]);
+    $campaign = Model\Campaign::findOne(['project_id' => $projectId]);
 } catch (exception\DataNotFound $e) {
     $emailer->getDb()->beginTransaction();
     // Add project
@@ -51,15 +51,15 @@ try {
     $notifyNews = $project->createNotify(NOTIFY_NEWS);
 
     // Add transport
-    $smtp = new Transports\Smtp();
+    $smtp = new Transports\Smtp($emailer);
     // Add notify
     $smtp->fromEmail = 'robot@localhost';
     $smtp->fromName = 'Robot';
     $smtp->dkim = $tplDir . 'dkim.key';
     $transport = $project->createTransport($smtp);
 
-    // Add campany
-    $campany = $project->createCampany(CAMPANY_NEWS, $tplWraper, $tplContent, $notifyNews);
+    // Add campaign
+    $campaign = $project->createCampaign(CAMPANY_NEWS, $tplWraper, $tplContent, $notifyNews);
 
     $emailer->getDb()->commit();
 }
@@ -75,7 +75,7 @@ $mail->setData([
     'unsubscribe.url' => 'http://localhost/',
 ]);
 $hash = $emailer
-    ->getNewSender($campany->project_id, $campany->id)
+    ->getNewSender($campaign->project_id, $campaign->id)
     ->send($mail);
 
 echo $hash;

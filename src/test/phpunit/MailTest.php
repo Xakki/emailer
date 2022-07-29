@@ -25,19 +25,19 @@ class MailTest extends TestCase
             'descr' => 'This description',
             'body' => 'This boy',
         ] + $replacer;
-        $campanyData = [
+        $campaignData = [
             'id' => 1,
             'project_id' => 1,
-            'name' => 'Test campany',
+            'name' => 'Test campaign',
             'created' => date('Y-m-d H:i:s'),
             'replacers' => json_encode(array_keys($replacer)),
         ];
 
         $mail = new Mail();
         $mail->setData($mailData);
-        $campany = $this->mockCampany($campanyData);
+        $campaign = $this->mockCampaign($campaignData);
 
-        $mail->validate($campany);
+        $mail->validate($campaign);
         self::assertEquals($mailData, $mail->getData());
     }
 
@@ -47,20 +47,20 @@ class MailTest extends TestCase
         $mailData = [
             'email' => 'test@example.com',
         ];
-        $campanyData = [
+        $campaignData = [
             'id' => 1,
             'project_id' => 1,
-            'name' => 'Test campany',
+            'name' => 'Test campaign',
             'created' => date('Y-m-d H:i:s'),
             'replacers' => json_encode(array_keys($replacer)),
         ];
 
         $mail = new Mail();
         $mail->setData($mailData);
-        $campany = $this->mockCampany($campanyData);
+        $campaign = $this->mockCampaign($campaignData);
 
-        $mail->validate($campany);
-        self::assertEquals($mailData + ['subject' => $campany->name], $mail->getData());
+        $mail->validate($campaign);
+        self::assertEquals($mailData + ['subject' => $campaign->name], $mail->getData());
     }
 
     /**
@@ -77,18 +77,18 @@ class MailTest extends TestCase
         $this->expectException(Validation::class);
         $this->expectExceptionCode($expectCode);
         $this->expectExceptionMessage($expectMess);
-        $campanyData = [
+        $campaignData = [
             'id' => 1,
             'project_id' => 1,
-            'name' => 'Test campany',
+            'name' => 'Test campaign',
             'created' => date('Y-m-d H:i:s'),
             'replacers' => json_encode(array_keys($replacer)),
         ];
         $mail = new Mail();
         $mail->setData($mailData);
-        $campany = $this->mockCampany($campanyData);
+        $campaign = $this->mockCampaign($campaignData);
 
-        $mail->validate($campany);
+        $mail->validate($campaign);
     }
 
     /**

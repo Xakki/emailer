@@ -20,9 +20,9 @@ class GetTransportByQueue
     public function handler(): Model\Transport
     {
         $domain = $this->queue->getEmail()->getDomain();
-        $campany = $this->queue->getCampany();
+        $campaign = $this->queue->getCampaign();
 
-        $row = Repository\Transport::find($this->queue->project_id, $domain->id, $campany->transport_id);
+        $row = Repository\Transport::find($this->queue->project_id, $domain->id, $campaign->transport_id);
 
         if (!$row) {
             throw new Exception\Exception('Not exist Transport');

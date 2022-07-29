@@ -21,7 +21,7 @@ $emailer = new Emailer($config, $logger);
 
 try {
     $emailer->getProject($projectId);
-    $campany = Model\Campany::findOne(['project_id' => $projectId]);
+    $campaign = Model\Campaign::findOne(['project_id' => $projectId]);
 } catch (exception\DataNotFound $e) {
     exit('+++');
     $emailer->getDb()->beginTransaction();
@@ -50,15 +50,15 @@ try {
     $notifyNews = $project->createNotify(NOTIFY_NEWS);
 
     // Add transport
-    $smtp = new Transports\Smtp();
+    $smtp = new Transports\Smtp($emailer);
     // Add notify
     $smtp->fromEmail = 'robot@example.com';
     $smtp->fromName = 'Robot';
     $smtp->dkim = __DIR__ . '/tpl/dkim.key';
     $transport = $project->createTransport($smtp);
 
-    // Add campany
-    $campany = $project->createCampany(CAMPANY_NEWS1, $tplWraper, $tplContent, $notifyNews);
+    // Add campaign
+    $campaign = $project->createCampaign(CAMPANY_NEWS1, $tplWraper, $tplContent, $notifyNews);
 
     $emailer->getDb()->commit();
 }
@@ -70,7 +70,7 @@ $mail->setData([
     'link' => 'http://xakki.ru',
 ]);
 $hash = $emailer
-    ->getNewSender($campany->project_id, $campany->id)
+    ->getNewSender($campaign->project_id, $campaign->id)
     ->send($mail);
 
 echo $hash;

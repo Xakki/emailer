@@ -21,7 +21,7 @@ class SenderTest extends TestCase
         ];
         $emailer = $this->mockEmailerSuccess($dbExpects);
         $project = $emailer->getProject(1);
-        $campany = $project->getCampany(1);
+        $campaign = $project->getCampaign(1);
 
         $mailData = [
             'email' => 'test@example.com',
@@ -30,12 +30,12 @@ class SenderTest extends TestCase
             'replyTo' => ['reply@example.com' => 'Mr. Reply'],
             'descr' => 'This description',
             'body' => 'This boy',
-        ] + $this->campanyReplacer;
+        ] + $this->campaignReplacer;
 
         $mail = new Mail();
         $mail->setData($mailData);
 
-        $sender = $this->mockSender($emailer, $project->id, $campany->id);
+        $sender = $this->mockSender($emailer, $project->id, $campaign->id);
         self::assertTrue(is_string($sender->send($mail)));
     }
 }

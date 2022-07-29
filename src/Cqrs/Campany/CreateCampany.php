@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Xakki\Emailer\Cqrs\Campany;
+namespace Xakki\Emailer\Cqrs\Campaign;
 
 use Xakki\Emailer\Cqrs\Template\GetTemplateNames;
 use Xakki\Emailer\Helper\Tools;
 use Xakki\Emailer\Model;
 use Xakki\Emailer\Model\Template;
 
-class CreateCampany
+class CreateCampaign
 {
     protected Model\Project $project;
     protected string $subject;
@@ -37,19 +37,19 @@ class CreateCampany
         $this->limitDay = $limitDay;
     }
 
-    public function handler(): Model\Campany
+    public function handler(): Model\Campaign
     {
-        // Add campany
-        $campany = new Model\Campany();
-        $campany->project_id = $this->project->id;
-        $campany->tpl_wraper_id = $this->tplWraper->id;
-        $campany->tpl_content_id = $this->tplContent->id;
-        $campany->notify_id = $this->notify->id;
-        $campany->limit_day = $this->limitDay;
-        $campany->status = Model\Campany::STATUS_ON;
-        $campany->name = $this->subject;
+        // Add campaign
+        $campaign = new Model\Campaign();
+        $campaign->project_id = $this->project->id;
+        $campaign->tpl_wraper_id = $this->tplWraper->id;
+        $campaign->tpl_content_id = $this->tplContent->id;
+        $campaign->notify_id = $this->notify->id;
+        $campaign->limit_day = $this->limitDay;
+        $campaign->status = Model\Campaign::STATUS_ON;
+        $campaign->name = $this->subject;
         if ($this->transport) {
-            $campany->transport_id = $this->transport->id;
+            $campaign->transport_id = $this->transport->id;
         }
 
         $rpl = $m = [];
@@ -70,7 +70,7 @@ class CreateCampany
         unset($rpl[Template::NAME_TITLE]);
         unset($rpl[Template::NAME_DESCR]);
 
-        $blocks = (new GetTemplateNames($campany->project_id, Template::TYPE_BLOCK))
+        $blocks = (new GetTemplateNames($campaign->project_id, Template::TYPE_BLOCK))
             ->handler();
 
         foreach ($blocks as $blockName) {
@@ -84,8 +84,8 @@ class CreateCampany
             }
         }
 
-        $campany->replacers = json_encode(array_values($rpl));
+        $campaign->replacers = json_encode(array_values($rpl));
 
-        return $campany->insert();
+        return $campaign->insert();
     }
 }

@@ -140,7 +140,7 @@ create table tpl_rev
 
 create index ix_tpl_rev_type on tpl_rev (type);
 
-create table campany
+create table campaign
 (
     id             int unsigned auto_increment primary key,
     created        timestamp  default current_timestamp()         not null,
@@ -174,11 +174,11 @@ create table queue
     unsubs     timestamp                              null,
     status     tinyint(1) default 0                   not null,
     retry      tinyint(1) default 0                   not null,
-    campany_id int unsigned                           not null,
+    campaign_id int unsigned                           not null,
     email_id   bigint unsigned                        not null,
     project_id int unsigned                           not null,
     notify_id  int unsigned                           not null,
-    FOREIGN KEY (campany_id) REFERENCES campany (id),
+    FOREIGN KEY (campaign_id) REFERENCES campaign (id),
     FOREIGN KEY (email_id) REFERENCES email (id),
     FOREIGN KEY (notify_id) REFERENCES notify (id),
     FOREIGN KEY (project_id) REFERENCES project (id)

@@ -20,7 +20,7 @@ class AbstractTransportTest extends TestCase
         $mock->replyEmail = 'test2@example.com';
         $mock->replyName = 'test2';
         $json = (string) $mock;
-        $mock2 = AbstractTransport::fromString($json);
+        $mock2 = AbstractTransport::fromString($json, $this->mockEmailerSuccess());
         self::assertEquals($json, (string) $mock2);
     }
 

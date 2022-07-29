@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Xakki\Emailer\Repository;
 
-class Campany extends AbstractRepository
+class Campaign extends AbstractRepository
 {
     protected static function tableName(): string
     {
-        return 'campany';
+        return 'campaign';
     }
 
     /**

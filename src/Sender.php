@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Xakki\Emailer;
 
 use Throwable;
-use Xakki\Emailer\Model\Campany;
+use Xakki\Emailer\Model\Campaign;
 use Xakki\Emailer\Model\Project;
 use Xakki\Emailer\Model\Template;
 
@@ -13,26 +13,26 @@ class Sender
 {
     protected Emailer $emailer;
     protected Project $project;
-    protected Campany $campany;
+    protected Campaign $campaign;
 
     /**
      * @param Emailer $emailer
      * @param int $projectId
-     * @param int $campanyId
+     * @param int $campaignId
      * @throws Exception\DataNotFound
      */
-    public function __construct(Emailer $emailer, int $projectId, int $campanyId)
+    public function __construct(Emailer $emailer, int $projectId, int $campaignId)
     {
         if (!$projectId) {
             throw new Exception\DataNotFound('Empty ProjectId');
         }
-        if (!$campanyId) {
-            throw new Exception\DataNotFound('Empty CampanyId');
+        if (!$campaignId) {
+            throw new Exception\DataNotFound('Empty CampaignId');
         }
 
         $this->emailer = $emailer;
         $this->project = $emailer->getProject($projectId);
-        $this->campany = $this->project->getCampany($campanyId);
+        $this->campaign = $this->project->getCampaign($campaignId);
     }
 
     public function send(Mail $mail): string
@@ -75,9 +75,9 @@ class Sender
     {
         $queue = $this->buildNewQueue();
         $queue->status = Model\Queue::QUEUE_STATUS_NEW;
-        $queue->campany_id = $this->campany->id;
+        $queue->campaign_id = $this->campaign->id;
         $queue->project_id = $this->project->id;
-        $queue->notify_id = $this->campany->notify_id;
+        $queue->notify_id = $this->campaign->notify_id;
         $queue->setMail($mail);
 
         if (!$queue->isActiveSubscribe()) {
@@ -88,14 +88,14 @@ class Sender
         }
 
         $queue->insert();
-        $this->campany->incCntQueue();
+        $this->campaign->incCntQueue();
         return $queue;
     }
 
     public function getParams(Mail $mail): array
     {
         $r = $mail->getData();
-        $r += $this->campany->getParams();
+        $r += $this->campaign->getParams();
         $r += $this->project->getParams();
         $this->setRouteUrl($r);
 

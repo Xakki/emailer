@@ -76,9 +76,9 @@ class Project extends AbstractModel
         return $model->insert();
     }
 
-    public function createCampany(string $subject, Template $wraper, Template $content, Notify $notify): Campany
+    public function createCampaign(string $subject, Template $wraper, Template $content, Notify $notify): Campaign
     {
-        return (new Cqrs\Campany\CreateCampany($this, $subject, $wraper, $content, $notify))
+        return (new Cqrs\Campaign\CreateCampaign($this, $subject, $wraper, $content, $notify))
             ->handler();
     }
 
@@ -88,8 +88,8 @@ class Project extends AbstractModel
             ->handler();
     }
 
-    public function getCampany(int $campanyId): Campany
+    public function getCampaign(int $campaignId): Campaign
     {
-        return (new Cqrs\Campany\GetCampany($this->id, $campanyId))->handler();
+        return (new Cqrs\Campaign\GetCampaign($this->id, $campaignId))->handler();
     }
 }

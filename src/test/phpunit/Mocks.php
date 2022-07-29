@@ -11,7 +11,7 @@ use Doctrine\DBAL\Driver\Connection as DriverConnection;
 use PHPUnit\Framework\MockObject\MockObject;
 use Xakki\Emailer\ConfigService;
 use Xakki\Emailer\Emailer;
-use Xakki\Emailer\Model\Campany;
+use Xakki\Emailer\Model\Campaign;
 use Xakki\Emailer\Model\Domain;
 use Xakki\Emailer\Model\Email;
 use Xakki\Emailer\Model\Notify;
@@ -29,7 +29,7 @@ trait Mocks
         Template::NAME_HOST => 'test.com',
     ];
     /** @var string[] */
-    protected array $campanyReplacer = [
+    protected array $campaignReplacer = [
         'test' => 'Some message',
     ];
 
@@ -133,12 +133,12 @@ trait Mocks
      */
     protected function mockEmailerSuccess(array $dbExpects = []): Emailer|MockObject
     {
-        $campanyData = [
+        $campaignData = [
             'id' => 1,
             'project_id' => 1,
-            'name' => 'Test Campany',
+            'name' => 'Test Campaign',
             'created' => date('Y-m-d H:i:s'),
-            'replacers' => json_encode(array_keys($this->campanyReplacer)),
+            'replacers' => json_encode(array_keys($this->campaignReplacer)),
             'cnt_queue' => 0,
             'transport_id' => 1,
         ];
@@ -150,15 +150,15 @@ trait Mocks
             'params' => json_encode($this->projectParams),
             'token' => '',
         ];
-        $company = $this->mockCampany($campanyData);
+        $company = $this->mockCampaign($campaignData);
         $project = $this->mockProject($projectData, $company);
         return $this->mockEmailer($project, $dbExpects);
     }
 
-    protected function mockSender(Emailer $emailer, int $projectId, int $campanyId): Sender|MockObject
+    protected function mockSender(Emailer $emailer, int $projectId, int $campaignId): Sender|MockObject
     {
         $mock = $this->getMockBuilder(Sender::class)
-            ->setConstructorArgs([$emailer, $projectId, $campanyId])
+            ->setConstructorArgs([$emailer, $projectId, $campaignId])
             ->onlyMethods(['buildNewQueue'])
             ->getMock();
 
@@ -171,34 +171,34 @@ trait Mocks
 
     /**
      * @param array<mixed> $projectData
-     * @param Campany $campany
+     * @param Campaign $campaign
      * @return MockObject|Project
      */
-    protected function mockProject(array $projectData, Campany $campany): MockObject|Project
+    protected function mockProject(array $projectData, Campaign $campaign): MockObject|Project
     {
         $mock = $this->getMockBuilder(Project::class)
             ->setConstructorArgs([$projectData])
-            ->onlyMethods(['findAll', 'findOne', 'insert', 'update', 'getCampany'])
+            ->onlyMethods(['findAll', 'findOne', 'insert', 'update', 'getCampaign'])
             ->getMock();
 
         $mock
-            ->method('getCampany')
-            ->willReturn($campany);
+            ->method('getCampaign')
+            ->willReturn($campaign);
         $this->mockMethodInsert($mock);
 
         return $mock;
     }
 
     /**
-     * @param array<mixed> $campanyData
-     * @return MockObject|Campany
+     * @param array<mixed> $campaignData
+     * @return MockObject|Campaign
      */
-    protected function mockCampany(array $campanyData): MockObject|Campany
+    protected function mockCampaign(array $campaignData): MockObject|Campaign
     {
-        $notify = $this->mockNotify($campanyData['project_id']);
-        $campanyData['notify_id'] = $notify->id;
-        $mock = $this->getMockBuilder(Campany::class)
-            ->setConstructorArgs([$campanyData])
+        $notify = $this->mockNotify($campaignData['project_id']);
+        $campaignData['notify_id'] = $notify->id;
+        $mock = $this->getMockBuilder(Campaign::class)
+            ->setConstructorArgs([$campaignData])
             ->onlyMethods(['findAll', 'findOne', 'insert', 'update', 'getNotify'])
             ->getMock();
         $this->mockMethodInsert($mock);
@@ -219,7 +219,7 @@ trait Mocks
                 'findOne',
                 'insert',
                 'update',
-                'getCampany',
+                'getCampaign',
                 'getProject',
                 'getEmailModel',
                 'isActiveSubscribe',
@@ -234,12 +234,12 @@ trait Mocks
             ->method('getProject')
             ->willReturn($project);
 
-        $campany = $project->getCampany(1);
-        $mock->campany_id = $campany->id;
-        $mock->notify_id = $campany->notify_id;
+        $campaign = $project->getCampaign(1);
+        $mock->campaign_id = $campaign->id;
+        $mock->notify_id = $campaign->notify_id;
         $mock
-            ->method('getCampany')
-            ->willReturn($campany);
+            ->method('getCampaign')
+            ->willReturn($campaign);
 
         $mock->email_id = 1;
         $mock->created = date('Y-m-d H:i:s');

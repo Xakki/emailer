@@ -26,8 +26,6 @@ wep/_vendors/bin/phpunit -c wep/email-service/phpunit.xml
 
 
 ## panel
-* https://github.com/erdkse/adminlte-3-vue
-* https://github.com/Materialfy/M-Dash
 * https://github.com/ColorlibHQ/AdminLTE
 
 

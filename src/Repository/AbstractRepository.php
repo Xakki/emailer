@@ -79,7 +79,7 @@ abstract class AbstractRepository
             $id = $values[static::pkName()] ?? (int)static::getDb()->lastInsertId();
         }
 
-        Emailer::getLoggerOld()->debug('INSERT INTO `' . static::tableName() . '` => #' . $id . '.', ['insert', 'data' => $values]);
+        Emailer::i()->getLogger()->debug('INSERT INTO `' . static::tableName() . '` => #' . $id . '.', ['insert', 'data' => $values]);
 
         if (!$id) {
             throw new Exception\Exception('Cant insert data');
@@ -112,7 +112,7 @@ abstract class AbstractRepository
 
         $cnt = static::getDb()->update(static::tableName(), $values, [static::pkName() => $id], $types);
 
-        Emailer::getLoggerOld()->debug('UPDATE `' . static::tableName() . '` => affected rows ' . $cnt . '.', ['update', 'data' => $values]);
+        Emailer::i()->getLogger()->debug('UPDATE `' . static::tableName() . '` => affected rows ' . $cnt . '.', ['update', 'data' => $values]);
 
         return $cnt;
     }
@@ -128,7 +128,7 @@ abstract class AbstractRepository
     {
         $cnt = static::getDb()->update(static::tableName(), $data, $criteria, $types);
 
-        Emailer::getLoggerOld()->debug('UPDATE `' . static::tableName() . '` => affected rows ' . $cnt . '.', ['update', 'data' => $data, 'criteria' => $criteria]);
+        Emailer::i()->getLogger()->debug('UPDATE `' . static::tableName() . '` => affected rows ' . $cnt . '.', ['update', 'data' => $data, 'criteria' => $criteria]);
 
         return $cnt;
     }
@@ -189,7 +189,7 @@ abstract class AbstractRepository
             $q .= ' FOR UPDATE';
         }
 
-        Emailer::getLoggerOld()->debug($q, ['query']);
+        Emailer::i()->getLogger()->debug($q, ['query']);
 
         $row = self::getDb()->fetchAssociative($q, $query->getParameters(), $query->getParameterTypes());
         if ($row) {
@@ -255,7 +255,7 @@ abstract class AbstractRepository
      */
     public static function getModelsByQuery(QueryBuilder $query): Generator
     {
-        Emailer::getLoggerOld()->debug($query->getSQL(), ['query']);
+        Emailer::i()->getLogger()->debug($query->getSQL(), ['query']);
         $result = $query->executeQuery();
         while ($row = $result->fetchAssociative()) {
             yield static::validate($row);
@@ -296,7 +296,7 @@ abstract class AbstractRepository
             $query->andWhere($k . '=:' . $k);
             $query->setParameter($k, $val);
         }
-        Emailer::getLoggerOld()->debug($query->getSQL(), ['delete']);
+        Emailer::i()->getLogger()->debug($query->getSQL(), ['delete']);
         return $query->executeQuery();
     }
 }

@@ -2,32 +2,32 @@
 
 declare(strict_types=1);
 
-namespace Xakki\Emailer\Cqrs\Campany;
+namespace Xakki\Emailer\Cqrs\Campaign;
 
 use Xakki\Emailer\Model;
 
-class GetCampany
+class GetCampaign
 {
     /**
-     * @var Model\Campany[]
+     * @var Model\Campaign[]
      */
     protected static array $campanies;
     protected int $projectId;
-    protected int $campanyId;
+    protected int $campaignId;
     protected bool $useCache;
 
-    public function __construct(int $projectId, int $campanyId, bool $useCache = true)
+    public function __construct(int $projectId, int $campaignId, bool $useCache = true)
     {
         $this->projectId = $projectId;
-        $this->campanyId = $campanyId;
+        $this->campaignId = $campaignId;
         $this->useCache = $useCache;
     }
 
-    public function handler(): Model\Campany
+    public function handler(): Model\Campaign
     {
-        $key = $this->projectId . '/' . $this->campanyId;
+        $key = $this->projectId . '/' . $this->campaignId;
         if (!$this->useCache || !isset(static::$campanies[$key])) {
-            static::$campanies[$key] = Model\Campany::findOne(['id' => $this->campanyId, 'project_id' => $this->projectId, 'status' => Model\Campany::STATUS_ON]);
+            static::$campanies[$key] = Model\Campaign::findOne(['id' => $this->campaignId, 'project_id' => $this->projectId, 'status' => Model\Campaign::STATUS_ON]);
         }
         return static::$campanies[$key];
     }

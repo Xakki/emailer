@@ -6,7 +6,7 @@ namespace Xakki\Emailer\Model;
 
 use Xakki\Emailer\Repository;
 
-class Campany extends AbstractModel
+class Campaign extends AbstractModel
 {
     public const STATUS_ON = 'on';
     public const STATUS_OFF = 'off';
@@ -29,7 +29,7 @@ class Campany extends AbstractModel
 
     protected static function repositoryClass(): string
     {
-        return Repository\Campany::class;
+        return Repository\Campaign::class;
     }
 
     public function getNotify(): Notify
@@ -58,14 +58,14 @@ class Campany extends AbstractModel
     public function incCntQueue(): self
     {
         $this->cnt_queue++;
-        Repository\Campany::inc($this->id, 'cnt_queue');
+        Repository\Campaign::inc($this->id, 'cnt_queue');
         return $this;
     }
 
     public function incCntSend(): self
     {
         $this->cnt_send++;
-        Repository\Campany::inc($this->id, 'cnt_send');
+        Repository\Campaign::inc($this->id, 'cnt_send');
         return $this;
     }
 

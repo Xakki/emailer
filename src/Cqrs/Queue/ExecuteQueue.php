@@ -12,9 +12,11 @@ use Xakki\Emailer\Model\Queue;
 class ExecuteQueue
 {
     protected Queue $queue;
+    protected Emailer $emailer;
 
-    public function __construct()
+    public function __construct(Emailer $emailer)
     {
+        $this->emailer = $emailer;
         try {
             $this->queue = Queue::findOne(['status' => Queue::QUEUE_STATUS_NEW], true);
         } catch (DataNotFound $e) {
@@ -25,12 +27,12 @@ class ExecuteQueue
 
     public function handler(): int
     {
-        $log = Emailer::getLoggerOld();
+        $log = $this->emailer->getLogger();
         $logParam = [
             'queue',
             'queue_id' => $this->queue->id,
             'email_id' => $this->queue->email_id,
-            'campany_id' => $this->queue->campany_id,
+            'campaign_id' => $this->queue->campaign_id,
             'project_id' => $this->queue->project_id,
         ];
         try {
@@ -49,7 +51,7 @@ class ExecuteQueue
             $log->debug('Transport: ' . $transportModel->id, $logParam);
             $this->queue->updateTransportId($transportModel->id);
 
-            $transport = $transportModel->getSmtpTransport();
+            $transport = $transportModel->getSmtpTransport($this->emailer);
             $status = $transport->send($this->queue);
 
             if (!$status) {

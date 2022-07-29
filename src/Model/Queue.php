@@ -46,7 +46,7 @@ class Queue extends AbstractModel
     public int $status;
     public int $retry;
     public int $project_id;
-    public int $campany_id;
+    public int $campaign_id;
     public int $notify_id;
     public int $email_id;
     protected ?Mail $mail = null;
@@ -94,7 +94,7 @@ class Queue extends AbstractModel
         $this->update(['sended', 'status']);
 //        $this->save(['sended' => new \DateTime(), 'status' => static::QUEUE_STATUS_SUCCESS], [\Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, \Doctrine\DBAL\Types\Types::INTEGER]);
 
-        $this->getCampany()->incCntSend();
+        $this->getCampaign()->incCntSend();
         return $this;
     }
 
@@ -148,19 +148,19 @@ class Queue extends AbstractModel
         return (new Cqrs\Project\GetProject($this->project_id))->handler();
     }
 
-    public function getCampany(): Campany
+    public function getCampaign(): Campaign
     {
-        return (new Cqrs\Campany\GetCampany($this->project_id, $this->campany_id))->handler();
+        return (new Cqrs\Campaign\GetCampaign($this->project_id, $this->campaign_id))->handler();
     }
 
     public function getBody(): string
     {
         $blocks = $this->initReplacer();
-        foreach ($this->getCampany()->getTplBlocks() as $tplBlock) {
+        foreach ($this->getCampaign()->getTplBlocks() as $tplBlock) {
             $blocks['{{' . $tplBlock->name . '}}'] = $tplBlock->html;
         }
-        $blocks['{{content}}'] = $this->getCampany()->getTplContent()->html;
-        $html = $this->getCampany()->getTplWraper()->html;
+        $blocks['{{content}}'] = $this->getCampaign()->getTplContent()->html;
+        $html = $this->getCampaign()->getTplWraper()->html;
         $html = strtr($html, $blocks);
         $html = strtr($html, $blocks);
         $html = strtr($html, $blocks);
@@ -168,7 +168,7 @@ class Queue extends AbstractModel
         if (Helper\Tools::hasReplacer($html, $m)) {
             throw new Exception\Validation(sprintf(
                 'Tpl #%s dont have replacer: %s',
-                $this->getCampany()->getTplWraper()->id,
+                $this->getCampaign()->getTplWraper()->id,
                 implode(', ', $m)
             ), Exception\Validation::CODE_DATA_MISS);
         }
@@ -211,7 +211,7 @@ class Queue extends AbstractModel
 
     public function getHash(): string
     {
-        return md5($this->getProject()->token . '|' . $this->project_id . '|' . $this->campany_id . '|' . $this->email_id . '|' . $this->id);
+        return md5($this->getProject()->token . '|' . $this->project_id . '|' . $this->campaign_id . '|' . $this->email_id . '|' . $this->id);
     }
 
     protected function getHomeUrl(): string
@@ -239,7 +239,7 @@ class Queue extends AbstractModel
         if (!empty($this->getMail()->getSubject())) {
             $txt = $this->getMail()->getSubject();
         } else {
-            $txt = $this->getCampany()->name;
+            $txt = $this->getCampaign()->name;
         }
 
         if (Helper\Tools::hasReplacer($txt)) {
@@ -290,9 +290,9 @@ class Queue extends AbstractModel
         $domain = parse_url($url, PHP_URL_HOST);
         $customHeaders['List-id'] = sprintf(
             '%s <list-%s-%s>',
-            $this->getCampany()->getNotify()->name,
+            $this->getCampaign()->getNotify()->name,
             $domain,
-            $this->getCampany()->notify_id,
+            $this->getCampaign()->notify_id,
         );
         return $customHeaders;
     }

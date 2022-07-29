@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Xakki\Emailer;
 
 use Xakki\Emailer\Exception\Validation;
-use Xakki\Emailer\Model\Campany;
+use Xakki\Emailer\Model\Campaign;
 
 class Mail implements \JsonSerializable
 {
