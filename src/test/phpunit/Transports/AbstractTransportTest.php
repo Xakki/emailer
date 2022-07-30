@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Xakki\Emailer\test\phpunit\Transports;
 
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Xakki\Emailer\Emailer;
 use Xakki\Emailer\test\phpunit\Mocks;
-use Xakki\Emailer\Transports\AbstractTransport;
+use Xakki\Emailer\Transports;
 
 class AbstractTransportTest extends TestCase
 {
@@ -14,18 +16,23 @@ class AbstractTransportTest extends TestCase
 
     public function testSuccess(): void
     {
-        $mock = $this->mockAbstractTransport();
+        $emailer = $this->mockEmailerSuccess();
+        $mock = $this->mockAbstractTransport($emailer);
         $mock->fromEmail = 'test@example.com';
         $mock->fromName = 'test';
         $mock->replyEmail = 'test2@example.com';
         $mock->replyName = 'test2';
         $json = (string) $mock;
-        $mock2 = AbstractTransport::fromString($json, $this->mockEmailerSuccess());
+        $mock2 = Transports\AbstractTransport::fromString($json, $emailer);
         self::assertEquals($json, (string) $mock2);
     }
 
-    public function mockAbstractTransport(): AbstractTransport
+    public function mockAbstractTransport(MockObject|Emailer $emailer): Transports\Smtp
     {
-        return $this->getMockForAbstractClass(AbstractTransport::class);
+        return $this->getMockBuilder(Transports\Smtp::class)
+            ->setConstructorArgs([$emailer])
+            ->enableProxyingToOriginalMethods()
+//            ->onlyMethods(['__toString'])
+            ->getMock();
     }
 }

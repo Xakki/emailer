@@ -25,15 +25,15 @@ class CreateTemplate
 
     public function handler(): Model\Template
     {
-        $tplWraper = new Model\Template();
-        $tplWraper->html = $this->html;
-        $tplWraper->name = $this->name;
-        $tplWraper->type = $this->type;
-        $tplWraper->project_id = $this->projectId;
-        $tplWraper->id = Repository\Template::insert($tplWraper->getProperties());
-        if (!$tplWraper->id) {
+        $tplWrapper = new Model\Template();
+        $tplWrapper->html = $this->html;
+        $tplWrapper->name = $this->name;
+        $tplWrapper->type = $this->type;
+        $tplWrapper->project_id = $this->projectId;
+        $tplWrapper->id = Repository\Template::insert($tplWrapper->getProperties());
+        if (!$tplWrapper->id) {
             throw new Exception\Exception('Can`t insert template');
         }
-        return $tplWraper;
+        return $tplWrapper;
     }
 }

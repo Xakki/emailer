@@ -45,6 +45,7 @@ class ConfigService
         'GET:/emailer/api/v{version:i}/panel/head' => [Controller\Api\Panel::class, 'head'],
         'GET:/emailer/api/v{version:i}/panel/dashboard' => [Controller\Api\Panel::class, 'dashboard'],
         'POST:/emailer/api/v{version:i}/smtp/test' => [Controller\Api\Smtp::class, 'test'],
+        'GET:/logs' => [Controller\Panel::class, 'logs'],
     ];
 
     /**

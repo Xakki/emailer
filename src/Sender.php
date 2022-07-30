@@ -7,7 +7,6 @@ namespace Xakki\Emailer;
 use Throwable;
 use Xakki\Emailer\Model\Campaign;
 use Xakki\Emailer\Model\Project;
-use Xakki\Emailer\Model\Template;
 
 class Sender
 {
@@ -37,8 +36,7 @@ class Sender
 
     public function send(Mail $mail): string
     {
-        $params = $this->getParams($mail->getData());
-        $mail->validate($params);
+        $mail->validate($this->campaign->getRequiredParams());
         $queue = $this->initQueue($mail);
         return $queue->getHashRoute();
     }
@@ -91,70 +89,4 @@ class Sender
         $this->campaign->incCntQueue();
         return $queue;
     }
-
-    public function getParams(Mail $mail): array
-    {
-        $r = $mail->getData();
-        $r += $this->campaign->getParams();
-        $r += $this->project->getParams();
-        $this->setRouteUrl($r);
-
-        $this->replaceUrlInData($r);
-
-        $r[Template::NAME_YEAR] = date('Y');
-        $r[Template::NAME_URL] = $this->getHomeUrl();
-        $r[Template::NAME_URL_LOGO] = $this->getLogoUrl();
-        $r[Template::NAME_URL_UNSUBSCRIBE] = $this->getUrlUnsubscribe();
-        $r[Template::NAME_URL_SUBSCRIBE] = $this->getUrlSubscribe();
-
-        if (!isset($r[Template::NAME_TITLE])) {
-            $r[Template::NAME_TITLE] = $this->getSubject();
-        }
-
-        if (!isset($r[Template::NAME_DESCR])) {
-            $r[Template::NAME_DESCR] = $this->getDescr();
-        }
-
-        $lang = 'ru';
-        if (isset($r[Template::NAME_LANG])) {
-            $lang = $r[Template::NAME_LANG];
-        }
-        $r = $r + Helper\Tools::getLocale($lang, 'view');
-        return $r;
-    }
-    
-    
-    /**
-     * @param array<string, string> $data
-     * @return $this
-     */
-    protected function setRouteUrl(array $data): self
-    {
-        $url = $data[Template::NAME_ROUTE];
-        if (str_contains($url, '://') === false) {
-            $url = 'https://' . $data[Template::NAME_HOST] . '/' . ltrim($url, '/');
-        }
-
-        $this->urlRoute = $url;
-        if (str_contains($url, '?') === false) {
-            $this->routeModeIsPath = true;
-        }
-        return $this;
-    }
-
-    /**
-     * @param array<string, mixed> $data
-     * @return void
-     */
-    public function replaceUrlInData(array &$data): void
-    {
-        $url = $this->getRouteUrl('goto');
-        foreach ($data as &$r) {
-            if (!is_string($r)) {
-                continue;
-            }
-            $r = Helper\Tools::redirectLink($r, $url);
-        }
-    }
-
 }

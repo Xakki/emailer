@@ -117,7 +117,7 @@ create table tpl
     name       varchar(128)                                   not null,
     html       mediumtext                                     null,
     status     enum ('off', 'on') default 'on'                not null,
-    type       enum ('wraper', 'content', 'block')            not null,
+    type       enum ('wrapper', 'content', 'block')            not null,
     project_id int unsigned                                   not null,
     FOREIGN KEY (project_id) REFERENCES project (id)
 ) engine = InnoDB
@@ -130,7 +130,7 @@ create table tpl_rev
     created    timestamp default current_timestamp() not null,
     name       varchar(128)                          not null,
     html       mediumtext                            null,
-    type       enum ('wraper', 'content')            not null,
+    type       enum ('wrapper', 'content')            not null,
     base_id    int unsigned                          not null,
     project_id int unsigned                          not null,
     FOREIGN KEY (project_id) REFERENCES project (id),
@@ -150,15 +150,16 @@ create table campaign
     limit_day      int unsigned       default 0                   not null,
     cnt_send       int unsigned       default 0                   not null,
     cnt_queue      int unsigned       default 0                   not null,
-    replacers      text                                           null,
+    replacers      varchar(255)                                   null,
+    params         text                                           null,
     transport_id   int unsigned                                   null,
     notify_id      int unsigned                                   not null,
-    tpl_wraper_id  int unsigned                                   not null,
+    tpl_wrapper_id  int unsigned                                   not null,
     tpl_content_id int unsigned                                   not null,
     project_id     int unsigned                                   not null,
     FOREIGN KEY (transport_id) REFERENCES transport (id),
     FOREIGN KEY (notify_id) REFERENCES notify (id),
-    FOREIGN KEY (tpl_wraper_id) REFERENCES tpl (id),
+    FOREIGN KEY (tpl_wrapper_id) REFERENCES tpl (id),
     FOREIGN KEY (tpl_content_id) REFERENCES tpl (id),
     FOREIGN KEY (project_id) REFERENCES project (id)
 ) engine = InnoDB
@@ -230,5 +231,4 @@ create table stats
 create index ix_stats_created on stats (project_id, queue_id);
         ");
     }
-
 }

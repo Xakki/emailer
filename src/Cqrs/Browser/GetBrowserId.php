@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Xakki\Emailer\Cqrs\Browser;
 
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
-use Xakki\Emailer\Cqrs\InterfaceCqrs;
+use Xakki\Emailer\Cqrs\CqrsInterface;
 use Xakki\Emailer\Repository;
 
-class GetBrowserId implements InterfaceCqrs
+class GetBrowserId implements CqrsInterface
 {
     protected string $ua;
 

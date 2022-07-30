@@ -124,8 +124,13 @@ class Emailer
      */
     public function dispatchConsole(array $args): string
     {
-        $controller = new Controller\Console($this);
-        return call_user_func_array([$controller, array_shift($args)], $args);
+        try {
+            $controller = new Controller\Console($this);
+            return call_user_func_array([$controller, array_shift($args)], $args);
+        } catch (\Throwable $e) {
+            $this->logger->error($e, ['category' => 'console']);
+            return $e->getMessage();
+        }
     }
 
     public function dispatchRoute(string $requestMethod, string $requestUri): string

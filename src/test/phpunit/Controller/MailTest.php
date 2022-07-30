@@ -7,6 +7,7 @@ namespace Xakki\Emailer\test\phpunit\Controller;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Xakki\Emailer\Controller;
+use Xakki\Emailer\Emailer;
 use Xakki\Emailer\Helper\Tools;
 use Xakki\Emailer\Model\Queue;
 use Xakki\Emailer\Model\Stats;
@@ -38,8 +39,9 @@ class MailTest extends TestCase
                 ],
             ],
         ];
-        $queue = $this->mockQueue(1, $this->mockEmailerSuccess($dbExpects));
-        $mail = $this->mockControllerMail($queue);
+        $emailer = $this->mockEmailerSuccess($dbExpects);
+        $queue = $this->mockQueue(1, $emailer);
+        $mail = $this->mockControllerMail($queue, $emailer);
         $mail->expects(self::once())
             ->method('headerSend');
 
@@ -62,8 +64,9 @@ class MailTest extends TestCase
                 ],
             ],
         ];
-        $queue = $this->mockQueue(1, $this->mockEmailerSuccess($dbExpects));
-        $mail = $this->mockControllerMail($queue);
+        $emailer = $this->mockEmailerSuccess($dbExpects);
+        $queue = $this->mockQueue(1, $emailer);
+        $mail = $this->mockControllerMail($queue, $emailer);
         $mail->expects(self::once())
             ->method('headerSend');
 
@@ -89,8 +92,9 @@ class MailTest extends TestCase
                 ],
             ],
         ];
-        $queue = $this->mockQueue(1, $this->mockEmailerSuccess($dbExpects));
-        $mail = $this->mockControllerMail($queue);
+        $emailer = $this->mockEmailerSuccess($dbExpects);
+        $queue = $this->mockQueue(1, $emailer);
+        $mail = $this->mockControllerMail($queue, $emailer);
         $mail->expects(self::once())
             ->method('headerSend');
         $mail
@@ -127,7 +131,7 @@ class MailTest extends TestCase
         ];
         $emailer = $this->mockEmailerSuccess($dbExpects);
         $queue = $this->mockQueue(1, $emailer);
-        $mail = $this->mockControllerMail($queue);
+        $mail = $this->mockControllerMail($queue, $emailer);
         $mail->expects(self::once())
             ->method('headerSend');
 
@@ -165,7 +169,7 @@ class MailTest extends TestCase
         ];
         $emailer = $this->mockEmailerSuccess($dbExpects);
         $queue = $this->mockQueue(1, $emailer);
-        $mail = $this->mockControllerMail($queue);
+        $mail = $this->mockControllerMail($queue, $emailer);
         $mail->expects(self::once())
             ->method('headerSend');
         $mail
@@ -180,10 +184,10 @@ class MailTest extends TestCase
      * @param MockObject|Queue $queue
      * @return MockObject|Controller\Mail
      */
-    protected function mockControllerMail(MockObject|Queue $queue): MockObject|Controller\Mail
+    protected function mockControllerMail(MockObject|Queue $queue, MockObject|Emailer $emailer): MockObject|Controller\Mail
     {
         $mock = $this->getMockBuilder(Controller\Mail::class)
-            ->setConstructorArgs([$this->mockLogger()])
+            ->setConstructorArgs([$emailer])
             ->onlyMethods(['getQueueById', 'redirect', 'renderImage', 'renderView', 'headerSend'])
             ->getMock();
 

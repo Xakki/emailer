@@ -321,7 +321,9 @@
     <rule ref="Squiz.WhiteSpace.ScopeClosingBrace.Indent"/>
 
     <!-- Variable names MUST be declared in camelCase. -->
-    <rule ref="WebimpressCodingStandard.NamingConventions.ValidVariableName"/>
+    <rule ref="WebimpressCodingStandard.NamingConventions.ValidVariableName">
+        <exclude-pattern>src/Model/*</exclude-pattern>
+    </rule>
 
     <!-- Property name "$_rateTime" should not be prefixed with an underscore to indicate visibility -->
     <rule ref="PSR2.Classes.PropertyDeclaration.Underscore"/>

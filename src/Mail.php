@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Xakki\Emailer;
 
 use Xakki\Emailer\Exception\Validation;
-use Xakki\Emailer\Model\Campaign;
+use Xakki\Emailer\Model\Template;
 
 class Mail implements \JsonSerializable
 {
@@ -29,13 +29,13 @@ class Mail implements \JsonSerializable
 
     public function setEmail(string $email): self
     {
-        $this->data['email'] = $this->valiateEmail($email);
+        $this->data['email'] = $this->validateEmail($email);
         return $this;
     }
 
     public function setEmailName(string $name): self
     {
-        $this->data['emailName'] = $this->valiateEmailName($name);
+        $this->data['emailName'] = $this->validateEmailName($name);
         return $this;
     }
 
@@ -65,8 +65,8 @@ class Mail implements \JsonSerializable
             if (!is_string($email) || !is_string($name)) {
                 throw new Validation('ReplyTo: allow array with string key and value.', Validation::CODE_WRONG_VALUE);
             }
-            $email = $this->valiateEmail($email);
-            $name = $this->valiateEmailName($name);
+            $email = $this->validateEmail($email);
+            $name = $this->validateEmailName($name);
             $replyTo[$email] = !empty($name) ? $name : $email;
         }
         $this->data['replyTo'] = $replyTo;
@@ -86,6 +86,12 @@ class Mail implements \JsonSerializable
     public function setBody(string $val): self
     {
         $this->data['body'] = $val;
+        return $this;
+    }
+
+    public function setLocale(string $val): self
+    {
+        $this->data['locale'] = $val;
         return $this;
     }
 
@@ -153,6 +159,11 @@ class Mail implements \JsonSerializable
         return $this->data['body'] ?? '';
     }
 
+    public function getLocale(): string
+    {
+        return $this->data['locale'] ?? Template::LOCALE_DEFAULT;
+    }
+
     /**
      * @return array<string,string>
      */
@@ -161,19 +172,24 @@ class Mail implements \JsonSerializable
         return $this->data;
     }
 
-    public function validate(array $params): void
+    /**
+     * @param string[] $requiredParams
+     * @return void
+     * @throws Validation
+     */
+    public function validate(array $requiredParams): void
     {
         if (empty($this->getEmail())) {
             throw new Validation('Email is required', Validation::CODE_REQUIRE);
         }
 
-        $diff = array_diff($params, array_keys($this->data));
+        $diff = array_diff($requiredParams, array_keys($this->getData()));
         if ($diff) {
             throw new Validation(sprintf('Data: miss replacers `%s`', implode(', ', $diff)), Validation::CODE_DATA_MISS);
         }
     }
 
-    public function valiateEmail(string $email): string
+    public function validateEmail(string $email): string
     {
         $email = filter_var($email, FILTER_SANITIZE_EMAIL);
         if ($email) {
@@ -185,7 +201,7 @@ class Mail implements \JsonSerializable
         return $email;
     }
 
-    public function valiateEmailName(string $name): string
+    public function validateEmailName(string $name): string
     {
         $name = preg_replace("/[^\d\w\s\-\_\.]+/ui", '', $name);
         if (mb_strlen($name) > 255) {

@@ -1,7 +1,5 @@
 <?php
 
-
-
 use Xakki\Emailer\ConfigService;
 use Xakki\Emailer\Emailer;
 use Xakki\Emailer\Exception;
@@ -35,8 +33,8 @@ try {
         Model\Template::NAME_URL_LOGO => 'https://example.com/logo.png',
     ]);
 
-    // Add tpl wraper
-    $tplWraper = $project->createTplWraper('Base', file_get_contents(__DIR__ . '/tpl/wraper1.php'));
+    // Add tpl wrapper
+    $tplWrapper = $project->createTplWrapper('Base', file_get_contents(__DIR__ . '/tpl/wrapper1.php'));
 
     // Add tpl content
     $tplContent = $project->createTplContent('News1', file_get_contents(__DIR__ . '/tpl/content1.php'));
@@ -58,7 +56,7 @@ try {
     $transport = $project->createTransport($smtp);
 
     // Add campaign
-    $campaign = $project->createCampaign(CAMPANY_NEWS1, $tplWraper, $tplContent, $notifyNews);
+    $campaign = $project->createCampaign(CAMPANY_NEWS1, $tplWrapper, $tplContent, $notifyNews);
 
     $emailer->getDb()->commit();
 }

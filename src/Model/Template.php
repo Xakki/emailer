@@ -8,7 +8,7 @@ use Xakki\Emailer\Repository;
 
 class Template extends AbstractModel
 {
-    public const TYPE_WRAPER = 'wraper';
+    public const TYPE_WRAPPER = 'wrapper';
     public const TYPE_CONTENT = 'content';
     public const TYPE_BLOCK = 'block';
 
@@ -29,6 +29,8 @@ class Template extends AbstractModel
     public const NAME_TITLE = 'mail.title';
     public const NAME_DESCR = 'mail.descr';
     public const NAME_NOTIFY = 'mail.notify';
+
+    public const LOCALE_DEFAULT = 'ru';
 
     public int $id;
     public string $created;

@@ -2,7 +2,7 @@ version: "3.5"
 services:
     php:
         build:
-            context: docker/php
+            context: docker/${CFG_PHP:-php}
             dockerfile: Dockerfile
         container_name: emailer-php
         working_dir: /app
@@ -10,6 +10,8 @@ services:
             - ./:/app
         environment:
             - ENV=${ENV}
+            - DEBUG_MODE=${DEBUG_MODE}
+            - APPLICATION_HOST=${APPLICATION_HOST}
             - EMAILER_API=${EMAILER_API}
             - SWAGGER_UI=${SWAGGER_UI}
             - MARIADB_HOST=emailer-mariadb
@@ -50,14 +52,14 @@ services:
         container_name: emailer-nginx
         working_dir: /app
         volumes:
-            - ./src/public:/app
+            - ./public:/app
             - ./docker/${CFG_NGINX:-nginx}/default.conf:/etc/nginx/conf.d/default.conf
             - ./docker/${CFG_NGINX:-nginx}/static_params:/etc/nginx/static_params
             - ./docker/${CFG_NGINX:-nginx}/fpm_params:/etc/nginx/fpm_params
             - ./docker/${CFG_NGINX:-nginx}/ssl:/etc/nginx/ssl
         environment:
             - ENV=${ENV}
-            - APPLICATION_URL=${URL}
+            - APPLICATION_HOST=${APPLICATION_HOST}
         ports:
             - "${PORT_HTTP:-80}:80"
             - "${PORT_HTTPS:-443}:443"

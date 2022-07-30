@@ -6,5 +6,4 @@ namespace Xakki\Emailer\Cqrs;
 
 abstract class AbstractCqrs
 {
-
 }

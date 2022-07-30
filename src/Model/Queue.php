@@ -160,7 +160,7 @@ class Queue extends AbstractModel
             $blocks['{{' . $tplBlock->name . '}}'] = $tplBlock->html;
         }
         $blocks['{{content}}'] = $this->getCampaign()->getTplContent()->html;
-        $html = $this->getCampaign()->getTplWraper()->html;
+        $html = $this->getCampaign()->getTplWrapper()->html;
         $html = strtr($html, $blocks);
         $html = strtr($html, $blocks);
         $html = strtr($html, $blocks);
@@ -168,7 +168,7 @@ class Queue extends AbstractModel
         if (Helper\Tools::hasReplacer($html, $m)) {
             throw new Exception\Validation(sprintf(
                 'Tpl #%s dont have replacer: %s',
-                $this->getCampaign()->getTplWraper()->id,
+                $this->getCampaign()->getTplWrapper()->id,
                 implode(', ', $m)
             ), Exception\Validation::CODE_DATA_MISS);
         }
@@ -184,7 +184,7 @@ class Queue extends AbstractModel
     {
         if (empty($this->tpl_blocks)) {
             //TODO
-            $this->tpl_blocks = Helper\Tools::wrapReplacer($r);
+            $this->tpl_blocks = Helper\Tools::wrapReplacer($this->getParams());
         }
         return $this->tpl_blocks;
     }
@@ -297,7 +297,7 @@ class Queue extends AbstractModel
         return $customHeaders;
     }
 
-    public function isStatusPosibleRepeat(): bool
+    public function isStatusPossibleRepeat(): bool
     {
         $list = [
             self::QUEUE_STATUS_QUOTA => 1,
@@ -306,5 +306,91 @@ class Queue extends AbstractModel
             self::QUEUE_STATUS_TEMP_ERROR => 1,
         ];
         return isset($list[$this->status]);
+    }
+
+    /**
+     * @return string[]
+     */
+    public static function getParamsKeyGenerate(): array
+    {
+        return [
+            Template::NAME_YEAR,
+            Template::NAME_URL,
+            Template::NAME_URL_LOGO,
+            Template::NAME_URL_UNSUBSCRIBE,
+            Template::NAME_TITLE,
+            Template::NAME_DESCR,
+            Template::NAME_LANG,
+        ];
+    }
+
+    /**
+     * @return string[]
+     * @throws Exception\Exception
+     */
+    public function getParams(): array
+    {
+        $r = $this->getMail()->getData();
+        $r += $this->getCampaign()->getParams();
+        $r += $this->getProject()->getParams();
+
+        if (!isset($r[Template::NAME_DESCR])) {
+            $r[Template::NAME_DESCR] = $this->getDescr();
+        }
+
+        $lang = Template::LOCALE_DEFAULT;
+        if (isset($r[Template::NAME_LANG])) {
+            $lang = $r[Template::NAME_LANG];
+        }
+        $r += Helper\Tools::getLocale($lang, 'view');
+
+        $this->setRouteUrl($r);
+
+        $this->setRedirect($r);
+
+        $r[Template::NAME_YEAR] = date('Y');
+        $r[Template::NAME_URL] = $this->getHomeUrl();
+        $r[Template::NAME_URL_LOGO] = $this->getLogoUrl();
+        $r[Template::NAME_URL_UNSUBSCRIBE] = $this->getUrlUnsubscribe();
+        $r[Template::NAME_URL_SUBSCRIBE] = $this->getUrlSubscribe();
+
+        if (!isset($r[Template::NAME_TITLE])) {
+            $r[Template::NAME_TITLE] = $this->getSubject();
+        }
+
+        return $r;
+    }
+
+    /**
+     * @param array<string, string> $data
+     * @return $this
+     */
+    protected function setRouteUrl(array $data): self
+    {
+        $url = $data[Template::NAME_ROUTE];
+        if (str_contains($url, '://') === false) {
+            $url = 'https://' . $data[Template::NAME_HOST] . '/' . ltrim($url, '/');
+        }
+
+        $this->urlRoute = $url;
+        if (str_contains($url, '?') === false) {
+            $this->routeModeIsPath = true;
+        }
+        return $this;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return void
+     */
+    public function setRedirect(array &$data): void
+    {
+        $url = $this->getRouteUrl('goto');
+        foreach ($data as &$r) {
+            if (!is_string($r)) {
+                continue;
+            }
+            $r = Helper\Tools::redirectLink($r, $url);
+        }
     }
 }

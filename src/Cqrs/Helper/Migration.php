@@ -8,10 +8,10 @@ use Doctrine\Migrations\Configuration\Connection\ExistingConnection;
 use Doctrine\Migrations\DependencyFactory;
 use Doctrine\Migrations\Tools\Console\Command;
 use Symfony\Component\Console\Application;
-use Xakki\Emailer\Cqrs\InterfaceCqrs;
+use Xakki\Emailer\Cqrs\CqrsInterface;
 use Xakki\Emailer\Emailer;
 
-class Migration implements InterfaceCqrs
+class Migration implements CqrsInterface
 {
     public function __construct()
     {

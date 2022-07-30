@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Xakki\Emailer\Cqrs\Auth;
 
 use Xakki\Emailer\Cqrs\AbstractCqrs;
-use Xakki\Emailer\Cqrs\InterfaceCqrs;
+use Xakki\Emailer\Cqrs\CqrsInterface;
 use Xakki\Emailer\Emailer;
 use Xakki\Emailer\Exception\AccessFail;
 use Xakki\Emailer\Exception\Validations;
 
-class GetAuthToken extends AbstractCqrs implements InterfaceCqrs
+class GetAuthToken extends AbstractCqrs implements CqrsInterface
 {
     public const MEM_KEY = 'auth';
     public const LIFETIME = 86400 * 30;

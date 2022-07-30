@@ -130,7 +130,7 @@ abstract class AbstractTransport implements \Stringable
     {
         return json_encode([
             'class' => get_class($this),
-            'prop' => get_object_vars($this),
+            'prop' => \Xakki\Emailer\Helper\Tools::getPublicProperty($this),
         ]);
     }
 

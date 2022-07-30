@@ -36,8 +36,8 @@ try {
         'url_reg' => 'http://localhost',
     ]);
 
-    // Add tpl wraper
-    $tplWraper = $project->createTplWraper('Base', file_get_contents($tplDir . 'wraper1.php'));
+    // Add tpl wrapper
+    $tplWrapper = $project->createTplWrapper('Base', file_get_contents($tplDir . 'wrapper1.php'));
 
     // Add tpl content
     $tplContent = $project->createTplContent('News1', file_get_contents($tplDir . 'content1.php'));
@@ -59,7 +59,10 @@ try {
     $transport = $project->createTransport($smtp);
 
     // Add campaign
-    $campaign = $project->createCampaign(CAMPANY_NEWS, $tplWraper, $tplContent, $notifyNews);
+    $campaignParams = [
+        Model\Template::TYPE_CONTENT => 'Welcome. Some text here!',
+    ];
+    $campaign = $project->createCampaign(CAMPANY_NEWS, $tplWrapper, $tplContent, $notifyNews, $campaignParams);
 
     $emailer->getDb()->commit();
 }

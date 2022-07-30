@@ -17,13 +17,14 @@ class Campaign extends AbstractModel
 
     public string $name; // Subject
     public string $status;
+    public string $params;
     public string $replacers;
     public int $limit_day;
     public int $cnt_send;
     public int $cnt_queue;
     public ?int $transport_id;
     public int $notify_id;
-    public int $tpl_wraper_id;
+    public int $tpl_wrapper_id;
     public int $tpl_content_id;
     public int $project_id;
 
@@ -37,9 +38,9 @@ class Campaign extends AbstractModel
         return Notify::findOneById($this->notify_id);
     }
 
-    public function getTplWraper(): Template
+    public function getTplWrapper(): Template
     {
-        return Template::findOneById($this->tpl_wraper_id);
+        return Template::findOneById($this->tpl_wrapper_id);
     }
 
     public function getTplContent(): Template
@@ -74,8 +75,16 @@ class Campaign extends AbstractModel
      */
     public function getParams(): array
     {
-        $r = (array) json_decode($this->replacers);
+        $r = $this->params ? (array) json_decode($this->params) : [];
         $r[Template::NAME_NOTIFY] = $this->getNotify()->name;
         return $r;
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getRequiredParams(): array
+    {
+        return $this->replacers ? (array) json_decode($this->replacers) : [];
     }
 }

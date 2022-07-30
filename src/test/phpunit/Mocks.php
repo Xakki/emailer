@@ -141,6 +141,7 @@ trait Mocks
             'replacers' => json_encode(array_keys($this->campaignReplacer)),
             'cnt_queue' => 0,
             'transport_id' => 1,
+            'params' => '',
         ];
         $projectData = [
             'id' => 1,

@@ -6,7 +6,6 @@ namespace Xakki\Emailer\Transports;
 
 use PHPMailer\PHPMailer\PHPMailer;
 use Xakki\Emailer\Cqrs\Domain\GetMxRecord;
-use Xakki\Emailer\Emailer;
 use Xakki\Emailer\Exception;
 use Xakki\Emailer\Model;
 

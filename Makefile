@@ -1,7 +1,7 @@
 SHELL = /bin/sh
 
 docker := $(shell command -v docker 2> /dev/null)
-docker-compose:= $(shell command -v docker-compose 2> /dev/null)
+docker-compose:= docker compose
 
 php := $(docker) exec -it emailer-php 
 composer := $(php) composer
@@ -46,7 +46,7 @@ test:
 phpstan:
 	$(composer) phpstan
 
-swagger:
+swagger-generate:
 	docker run -it --rm -v src:/app tico/swagger-php /app/Controller/Api --output swagger.json
 
 ## https://github.com/swagger-api/swagger-ui/blob/master/docs/usage/installation.md

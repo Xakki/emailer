@@ -111,8 +111,8 @@ abstract class AbstractController
         $this->headerSend('Location: ' . $url, true, $code);
     }
 
-    protected function headerSend(string $header, bool $replace = true, int $response_code = 0): void
+    protected function headerSend(string $header, bool $replace = true, int $responseCode = 0): void
     {
-        header($header, $replace, $response_code);
+        header($header, $replace, $responseCode);
     }
 }

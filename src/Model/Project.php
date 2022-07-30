@@ -32,7 +32,7 @@ class Project extends AbstractModel
      */
     public function getParams(): array
     {
-        $r = (array) json_decode($this->params);
+        $r = (array) json_decode($this->params, true);
         $r[Template::NAME_PROJECT] = $this->name;
         return $r;
     }
@@ -48,14 +48,14 @@ class Project extends AbstractModel
         return $this->paramsArray[$name] ?? null;
     }
 
-    public function createTplWraper(string $name, string $html): Template
+    public function createTplWrapper(string $name, string $html): Template
     {
-        return (new Cqrs\Template\CreateTemplate($this->id, $name, $html, Template::TYPE_WRAPER))->handler();
+        return (new Cqrs\Template\CreateTemplate($this->id, $name, $html, Template::TYPE_WRAPPER))->handler();
     }
 
-    public function updateTplWraper(string $name, string $html): Template
+    public function updateTplWrapper(string $name, string $html): Template
     {
-        return (new Cqrs\Template\UpdateTemplate($this->id, $name, $html, Template::TYPE_WRAPER))->handler();
+        return (new Cqrs\Template\UpdateTemplate($this->id, $name, $html, Template::TYPE_WRAPPER))->handler();
     }
 
     public function createTplContent(string $name, string $html): Template
@@ -76,9 +76,17 @@ class Project extends AbstractModel
         return $model->insert();
     }
 
-    public function createCampaign(string $subject, Template $wraper, Template $content, Notify $notify): Campaign
+    /**
+     * @param string $subject
+     * @param Template $wrapper
+     * @param Template $content
+     * @param Notify $notify
+     * @param array<string,string> $params
+     * @return Campaign
+     */
+    public function createCampaign(string $subject, Template $wrapper, Template $content, Notify $notify, array $params): Campaign
     {
-        return (new Cqrs\Campaign\CreateCampaign($this, $subject, $wraper, $content, $notify))
+        return (new Cqrs\Campaign\CreateCampaign($this, $subject, $wrapper, $content, $notify, null, $params))
             ->handler();
     }
 
