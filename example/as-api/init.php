@@ -11,8 +11,7 @@ define('CAMPANY_NEWS1', 'Тестирование сервиса');
 
 $projectId = 1;
 
-$config = new ConfigService();
-$config->db['pass'] = 'CHENGE_ME';
+$config = new ConfigService(['db' => ['pass' => 'CHENGE_ME']]);
 
 $logger = new \Xakki\Emailer\test\phpunit\Logger();
 $emailer = new Emailer($config, $logger);

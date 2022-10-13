@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Xakki\Emailer\test\phpunit\Transports;
 
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Xakki\Emailer\Emailer;
 use Xakki\Emailer\test\phpunit\Mocks;

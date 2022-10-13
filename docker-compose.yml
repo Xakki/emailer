@@ -22,7 +22,7 @@ services:
             - REDIS_HOST=emailer-redis
             - REDIS_PORT=6379
         ports:
-            - "${PORT_PHP:-9000}:9000"
+            - "${PORT_PHP:-10002}:9000"
         restart: "no"
         networks:
             - default
@@ -42,7 +42,7 @@ services:
             MARIADB_PASSWORD: ${MARIADB_PASSWORD}
             MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
         ports:
-            - "${PORT_DB:-10002}:3306"
+            - "${PORT_DB:-10003}:3306"
         restart: "no"
         networks:
             - default
@@ -61,8 +61,8 @@ services:
             - ENV=${ENV}
             - APPLICATION_HOST=${APPLICATION_HOST}
         ports:
-            - "${PORT_HTTP:-80}:80"
-            - "${PORT_HTTPS:-443}:443"
+            - "${PORT_HTTP:-82}:80"
+            - "${PORT_HTTPS:-83}:443"
         restart: "no"
         networks:
             - default

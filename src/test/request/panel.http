@@ -1,6 +1,6 @@
 # auth
 
-POST {{host}}/api/v1/panel/login
+POST {{host}}/emailer/api/v1/panel/login
 Content-Type: application/json
 Accept: application/json
 User-Agent: emailer

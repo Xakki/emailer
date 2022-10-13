@@ -17,14 +17,14 @@ use Xakki\Emailer\Exception\Validations;
  * @OA\SecurityScheme(
  *     securityScheme="token",
  *     type="apiKey",
- *     name="Authorization",
+ *     name="x-token",
  *     in="header"
  * )
  */
 abstract class AbstractApi extends AbstractController
 {
     public const VERSIONS = [
-        'v1',
+        '1',
     ];
     protected static string $version = 'v1';
 
@@ -50,6 +50,7 @@ abstract class AbstractApi extends AbstractController
             unset($arguments['version']);
 
             try {
+                $this->xAuth();
                 $data = call_user_func_array([$this, $m], $arguments);
                 $data = static::successAction($data);
                 http_response_code(200);
@@ -90,8 +91,11 @@ abstract class AbstractApi extends AbstractController
     /**
      * @OA\Schema(
      *     schema="Success",
-     *     @OA\Property( property="success", type="bool", default=true),
-     *     @OA\Property( property="data", type="array")
+     *     @OA\Property( property="success", type="boolean", default=true),
+     *     @OA\Property( property="data", type="array", @OA\Items(oneOf={
+     *         @OA\Schema(type="string"),
+     *         @OA\Schema(type="integer")
+     *     }))
      * )
      */
     /**
@@ -154,5 +158,13 @@ abstract class AbstractApi extends AbstractController
             "data" => $data,
             "message" => "Validation errors",
         ];
+    }
+
+    /**
+     * @return bool
+     */
+    protected function xAuth(): bool
+    {
+        return true;
     }
 }

@@ -3,3 +3,4 @@ SHELL=/bin/bash
 BASH_ENV=/etc/environment
 
 #* * * * * /app/console send > /dev/null
+1 0 * * * /app/console newDay > /dev/null

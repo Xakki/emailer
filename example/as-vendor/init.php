@@ -2,8 +2,11 @@
 
 require_once __DIR__.'/../../vendor/autoload.php';
 
-use Xakki\Emailer\ConfigService;
-use Xakki\Emailer\Emailer;
+use Monolog\Formatter\JsonFormatter;
+use Monolog\Handler\StreamHandler;
+use Monolog\Level;
+use Monolog\Logger;
+use Xakki\Emailer;
 use Xakki\Emailer\Exception;
 use Xakki\Emailer\Model;
 use Xakki\Emailer\Transports;
@@ -11,16 +14,20 @@ use Xakki\Emailer\Transports;
 define('NOTIFY_NEWS', 'Новости');
 define('CAMPANY_NEWS', 'Тестирование сервиса');
 
-$projectId = 1;
+$config = new Emailer\ConfigService(include __DIR__ . '/../config/' . getenv('ENV') . '.php');
 
-$config = new ConfigService();
-$config->db['host'] = 'emailer-mariadb';
-$config->db['pass'] = 'CHENGE_ME';
-
-$logger = new \Xakki\Emailer\test\phpunit\Logger();
-$emailer = new Emailer($config, $logger);
+$logger = new Logger('vendor');
+$handler = new StreamHandler(
+    '/var/log/app.log',
+    getenv('DEBUG_MODE') ? Level::Debug : Level::Warning
+);
+$handler->setFormatter(new JsonFormatter());
+$logger->pushHandler($handler);
+$emailer = new Emailer\Emailer($config, $logger);
 
 $tplDir = __DIR__ . '/../tpl/';
+$projectId = 1;
+
 try {
     $emailer->getProject($projectId);
     $campaign = Model\Campaign::findOne(['project_id' => $projectId]);

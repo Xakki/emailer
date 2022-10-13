@@ -108,8 +108,8 @@ trait Mocks
      */
     protected function mockEmailer(Project $project, array $dbExpects): MockObject|Emailer
     {
-        $config = new ConfigService();
-        $config->db['password'] = 'testpass123';
+        $config = new ConfigService(['db' => ['password' => 'testpass123']]);
+
         $mock = $this->getMockBuilder(Emailer::class)
             ->setConstructorArgs([$config, $this->mockLogger()])
             ->onlyMethods(['getDb', 'getProject'])

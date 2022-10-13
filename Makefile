@@ -47,7 +47,7 @@ phpstan:
 	$(composer) phpstan
 
 swagger-generate:
-	docker run -it --rm -v src:/app tico/swagger-php /app/Controller/Api --output swagger.json
+	docker run -v "${PWD}/src":/app -it tico/swagger-php /app/Controller/Api --output swagger.json
 
 ## https://github.com/swagger-api/swagger-ui/blob/master/docs/usage/installation.md
 swagger-ui:

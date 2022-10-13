@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 namespace Xakki\Emailer;
 
+/**
+ * @property-read array $api
+ * @property-read array $db
+ */
 class ConfigService
 {
     /** @var array<string,mixed> */
-    public array $api = [
+    protected array $api = [
         'email' => '',
         'password' => '',
         'key' => '',
     ];
 
     /** @var array<string,mixed> */
-    public array $db = [
+    protected array $db = [
         'driver' => 'pdo_mysql',
         'charset' => 'UTF8',
         'host' => 'emailer-mariadb',
@@ -27,13 +31,13 @@ class ConfigService
     ];
 
     /** @var array<string,mixed> */
-    public array $redis = [
+    protected array $redis = [
         'host' => 'emailer-redis',
         'port' => 6379,
     ];
 
     /** @var array<string,callable>  */
-    public array $route = [
+    protected array $route = [
         'ANY:/' => [Controller\Mail::class, 'index'],
         'GET:/emailer/home/{key}' => [Controller\Mail::class, 'home'],
         'GET:/emailer/goto/{key:a}/{url:c}' => [Controller\Mail::class, 'goto'],
@@ -52,7 +56,7 @@ class ConfigService
      * @var array<string,mixed>
      * https://www.doctrine-project.org/projects/doctrine-migrations/en/3.3/reference/configuration.html#configuration
      */
-    public array $migration = [
+    protected array $migration = [
         'table_storage' => ['table_name' => 'migration'],
         'migrations_paths' => [
             'Xakki\Emailer\Migration' => __DIR__ . '/Migration',
@@ -77,5 +81,10 @@ class ConfigService
                 $this->{$k} = $v;
             }
         }
+    }
+
+    public function __get(string $name)
+    {
+        return $this->$name;
     }
 }
