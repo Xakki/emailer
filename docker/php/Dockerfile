@@ -1,8 +1,8 @@
-# Version: 0.0.1
-FROM php:8.1-fpm
+# Version: 0.1.0
+FROM php:8.2-fpm
 MAINTAINER Xakki <xakki@ya.ru>
 ARG DEBIAN_FRONTEND=noninteractive
-ENV REFRESHED_AT="2022–01–09"
+ENV REFRESHED_AT="2023–01–05"
 
 USER root
 
@@ -19,6 +19,7 @@ RUN apt-get install -y \
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 #RUN curl -o composer https://getcomposer.org/download/2.1.3/composer.phar && chmod 0555 composer && mv composer /usr/bin/
 
+
 RUN if [ "$ENV" = "dev" ] ; then pecl install xdebug && docker-php-ext-enable xdebug ; fi
 
 RUN pecl install redis && docker-php-ext-enable redis
@@ -33,13 +34,12 @@ RUN docker-php-ext-install -j$(nproc) gd intl pdo_mysql mbstring zip pcntl opcac
 
 RUN docker-php-source delete && apt-get autoremove --purge -y && apt-get autoclean -y && apt-get clean -y
 
-COPY php.ini /usr/local/etc/php/
-COPY www.conf /usr/local/etc/php-fpm.d/
+RUN echo "access.log = /dev/null" >> /usr/local/etc/php-fpm.d/docker.conf
+
 COPY cronjob /etc/cron.d/
 RUN chmod 0644 /etc/cron.d/cronjob
 RUN crontab /etc/cron.d/cronjob
 
 STOPSIGNAL SIGKILL
 
-#"php-fpm -R", 
-CMD printenv > /etc/environment && php-fpm -R -D && cron -f && tail -f /var/log/*.log -n 5
+CMD printenv > /etc/environment && cron -f && php-fpm -R

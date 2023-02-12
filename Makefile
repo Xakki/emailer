@@ -28,6 +28,14 @@ fix-permision:
 	$(php) find ./src/Migration -type f -exec chmod 0666 {} \;
 #	$(php) sh -c "chown -R root:root ./src/Migration"
 
+fix-permision-all:
+	chown -R $USER:docker .
+	find . -type d -exec chmod 0775 {} \;
+	find . -type f -exec chmod 0664 {} \;
+	find . -type f -name "*.sh" -exec chmod 0775 {} \;
+	find vendor/bin -type f -exec chmod 0775 {} \;
+	chmod 0775 console
+
 bash-php:
 	$(php) bash
 
@@ -54,25 +62,26 @@ swagger-ui:
 	docker run --rm --name uni-swagger --network default-network -p 82:8181 -e SWAGGER_JSON=/app/swagger.json -v src:/app swaggerapi/swagger-ui
 
 cs-fix:
-	$(php) sh -c "git diff --name-only --diff-filter=AM master | grep .php | xargs composer cs-fix"
+	$(php) sh -l -c "git diff --name-only --diff-filter=AM master | grep .php | xargs composer cs-fix"
 
 cs-fix-all:
-	$(php) sh -c "composer cs-fix"
+	$(php) sh -l -c "composer cs-fix"
 
 cs-check:
-	$(php) sh -c "git diff --name-only --diff-filter=AM master | grep .php | xargs composer cs-check"
+	$(php) sh -l -c "git diff --name-only --diff-filter=AM master | grep .php | xargs composer cs-check"
 
 cs-check-all:
-	$(php) sh -c "composer cs-check"
+	$(php) sh -l -c "composer cs-check"
 
 migrations-up:
-	$(php) sh -c "./console migrations migrate"
+	$(php) sh -l -c "./console migrations migrate"
 
 migrations-down:
-	$(php) sh -c "./console migrations rollup"
+	$(php) sh -l -c "./console migrations rollup"
 
 migrations-create:
-	$(php) sh -c "./console migrations generate"
+	$(php) sh -l -c "./console migrations generate"
 
 migrations-status:
-	$(php) sh -c "./console migrations status"
+	$(php) sh -l -c "./console migrations status"
+

@@ -22,3 +22,4 @@ Content-Type: application/json
 Accept: application/json
 User-Agent: emailer
 Cookie: XDEBUG_SESSION=PHPSTORM
+Cookie: XDEBUG_SESSION=PHPSTORM

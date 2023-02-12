@@ -16,8 +16,7 @@
     }
   },
   "require": {
-    "php": "^8.1",
-    "ext-zend-opcache": "*",
+    "php": "8.2",
     "ext-pdo": "*",
     "ext-json": "*",
     "ext-fileinfo": "*",
@@ -37,7 +36,7 @@
   },
   "scripts": {
     "phpunit": "phpunit -c phpunit.xml",
-    "phpstan": "phpstan analyse --memory-limit 2G",
+    "phpstan": "phpstan analyse --memory-limit 1G",
     "cs-check": "phpcs .",
     "cs-fix": "phpcbf .",
     "cs-commit-check": "git diff --name-only --diff-filter=AM origin/master | grep .php | xargs composer cs-check",

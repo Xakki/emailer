@@ -8,7 +8,7 @@ use Monolog\Level;
 use Monolog\Logger;
 use Xakki\Emailer;
 
-$config = new Emailer\ConfigService(include __DIR__ . '/../config/' . getenv('ENV') . '.php');
+$config = new Emailer\ConfigService(require __DIR__ . '/../config/' . getenv('ENV') . '.php');
 
 $logger = new Logger('web');
 $handler = new StreamHandler(

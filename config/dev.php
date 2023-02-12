@@ -10,7 +10,7 @@ return [
     ],
     'redis' => [
         'host' => getenv('REDIS_HOST'),
-        'port' => getenv('REDIS_PORT'),
+        'port' => (int) getenv('REDIS_PORT'),
     ],
     'api' => [
         'email' => 'dev@localhost',
