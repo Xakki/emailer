@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Xakki\Emailer\Transports;
 
 use Xakki\Emailer\Emailer;
+use Xakki\Emailer\Exception\Exception;
+use Xakki\Emailer\Helper\Tools;
 use Xakki\Emailer\Model\Queue;
 
 abstract class AbstractTransport implements \Stringable
@@ -123,15 +125,16 @@ abstract class AbstractTransport implements \Stringable
         return $class;
     }
 
-    /**
-     * @return string
-     */
     public function __toString(): string
     {
-        return json_encode([
+        $res = json_encode([
             'class' => get_class($this),
-            'prop' => \Xakki\Emailer\Helper\Tools::getPublicProperty($this),
+            'prop' => Tools::getPublicProperty($this),
         ]);
+        if ($res === false) {
+            throw new Exception('Fail json encode: ' . json_last_error_msg());
+        }
+        return $res;
     }
 
     public function getError(): string

@@ -103,7 +103,7 @@ class Smtp extends AbstractTransport
                 //$mail->DKIM_passphrase ;
                 $phpMailer->DKIM_domain = $phpMailer->Hostname;
                 $phpMailer->DKIM_selector = 'mail'; // эта фигня именно такой должна быть
-                $phpMailer->DKIM_private_string = file_get_contents($this->dkim); //       or  $mail->DKIM_private;
+                $phpMailer->DKIM_private_string = (string) file_get_contents($this->dkim); //       or  $mail->DKIM_private;
             } else {
                 throw new Exception\Exception('No dkim file');
             }

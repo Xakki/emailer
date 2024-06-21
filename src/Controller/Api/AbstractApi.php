@@ -51,6 +51,7 @@ abstract class AbstractApi extends AbstractController
 
             try {
                 $this->xAuth();
+                // @phpstan-ignore-next-line
                 $data = call_user_func_array([$this, $m], $arguments);
                 $data = static::successAction($data);
                 http_response_code(200);
@@ -76,7 +77,14 @@ abstract class AbstractApi extends AbstractController
      */
     protected function getPost(): array
     {
-        return json_decode(file_get_contents('php://input'), true);
+        $str = json_decode((string) file_get_contents('php://input'), true);
+        if (!is_array($str)) {
+            if (json_last_error()) {
+                $this->logger->error(json_last_error_msg());
+            }
+            return [];
+        }
+        return $str;
     }
 
     /**
@@ -85,7 +93,7 @@ abstract class AbstractApi extends AbstractController
      */
     protected static function toJson(array $data): string
     {
-        return json_encode($data);
+        return (string) json_encode($data);
     }
 
     /**

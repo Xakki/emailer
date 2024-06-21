@@ -65,20 +65,20 @@ class CreateCampaign
         $campaign->status = Model\Campaign::STATUS_ON;
         $campaign->name = $this->subject;
         if ($this->params) {
-            $campaign->params = json_encode($this->params);
+            $campaign->params = (string) json_encode($this->params);
         }
         if ($this->transport) {
             $campaign->transport_id = $this->transport->id;
         }
 
-        $campaign->replacers = json_encode($this->getRequiredParams($campaign));
+        $campaign->replacers = (string) json_encode($this->getRequiredParams($campaign));
 
         return $campaign->insert();
     }
 
     /**
      * @param Model\Campaign $campaign
-     * @return string[]
+     * @return array<int, int|string>
      */
     protected function getRequiredParams(Model\Campaign $campaign): array
     {

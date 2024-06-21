@@ -110,7 +110,7 @@ abstract class AbstractRepository
             $values[$name] = $val;
         }
 
-        $cnt = static::getDb()->update(static::tableName(), $values, [static::pkName() => $id], $types);
+        $cnt = (int) static::getDb()->update(static::tableName(), $values, [static::pkName() => $id], $types);
 
         Emailer::i()->getLogger()->debug('UPDATE `' . static::tableName() . '` => affected rows ' . $cnt . '.', ['update', 'data' => $values]);
 
@@ -119,23 +119,25 @@ abstract class AbstractRepository
 
     /**
      * @param array<string, mixed> $data
-     * @param array<string|int, mixed> $criteria
+     * @param array<string, mixed> $criteria
      * @param array<int, int|string|Type|null>|array<string, int|string|Type|null> $types
      * @return int
      * @throws \Doctrine\DBAL\Exception
      */
     public static function update(array $data, array $criteria, array $types = []): int
     {
-        $cnt = static::getDb()->update(static::tableName(), $data, $criteria, $types);
+        $cnt = (int) static::getDb()->update(static::tableName(), $data, $criteria, $types);
 
-        Emailer::i()->getLogger()->debug('UPDATE `' . static::tableName() . '` => affected rows ' . $cnt . '.', ['update', 'data' => $data, 'criteria' => $criteria]);
+        Emailer::i()->getLogger()->debug('UPDATE `' . static::tableName() . '` => affected rows ' . $cnt . '.',
+            ['update', 'data' => $data, 'criteria' => $criteria]);
 
         return $cnt;
     }
 
     public static function inc(int $id, string $field, int $val = 1): int
     {
-        return self::getDb()->executeStatement('UPDATE ' . static::tableName() . ' SET ' . $field . ' = ' . $field . ' + ? WHERE id = ?', [$val, $id]);
+        return (int) self::getDb()->executeStatement('UPDATE ' . static::tableName() .
+            ' SET ' . $field . ' = ' . $field . ' + ? WHERE id = ?', [$val, $id]);
     }
 
     /**

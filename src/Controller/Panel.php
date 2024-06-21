@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Xakki\Emailer\Controller;
 
+use Xakki\Emailer\Exception\Exception;
+
 /**
  * @method logs()
  */
@@ -23,6 +25,9 @@ class Panel extends AbstractController
     protected function actionLogs(): string
     {
         $fp = fopen('/var/log/app.log', 'r');
+        if ($fp === false) {
+            throw new Exception('Fail open log');
+        }
         $max = 50;
         $xPos = 0;
         while ($max > 0) {

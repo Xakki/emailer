@@ -28,9 +28,10 @@ class GetDomainIdByEmail
             $domain = (new GetDomain($domain))->handler();
             $val = $domain->id;
             if ($domain->created && time() - strtotime($domain->created) > 10) {
+                /** @psalm-suppress InvalidArgument **/
                 $mem->set($key, $val, 86400 * 2);
             }
         }
-        return $val;
+        return (int) $val;
     }
 }

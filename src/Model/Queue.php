@@ -50,7 +50,7 @@ class Queue extends AbstractModel
     public int $notify_id;
     public int $email_id;
     protected ?Mail $mail = null;
-    /** @var array<string, string> */
+    /** @var array<string, int|string> */
     protected array $tpl_blocks = [];
     protected string $urlRoute = '';
     protected bool $routeModeIsPath = false;
@@ -177,7 +177,7 @@ class Queue extends AbstractModel
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, int|string>
      * @throws Exception\Exception
      */
     public function initReplacer(): array
@@ -362,7 +362,7 @@ class Queue extends AbstractModel
     }
 
     /**
-     * @param array<string, string> $data
+     * @param array<string, mixed> $data
      * @return $this
      */
     protected function setRouteUrl(array $data): self

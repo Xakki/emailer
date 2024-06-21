@@ -184,10 +184,10 @@ final class Tools
 
     /**
      * @param string $file
-     * @return array{0: string, 1: string}
+     * @return array{0: false|string, 1: string}
      */
     public static function getBase64File(string $file): array
     {
-        return [mime_content_type($file), base64_encode(file_get_contents($file))];
+        return [mime_content_type($file), base64_encode((string) file_get_contents($file))];
     }
 }

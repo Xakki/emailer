@@ -14,6 +14,6 @@ class NewDayTransport
 
     public function handler(): int
     {
-        return Transport::update(['cnt_day' => 0], [1 => 1]);
+        return Transport::update(['cnt_day' => 0], []);
     }
 }

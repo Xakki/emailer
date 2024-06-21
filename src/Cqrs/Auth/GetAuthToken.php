@@ -45,6 +45,7 @@ class GetAuthToken extends AbstractCqrs implements CqrsInterface
      */
     public function handler(): array
     {
+        // TODO
         if ($this->login === 'admin' && $this->pass === 'todo') {
             $mem = Emailer::i()->getCache();
             $key = self::MEM_KEY . ':' . $this->login;
@@ -55,6 +56,7 @@ class GetAuthToken extends AbstractCqrs implements CqrsInterface
                 'xToken' => $token,
                 'hasOldAuth' => (bool) $hasOldAuth,
             ];
+            /** @psalm-suppress InvalidArgument **/
             $mem->set($key, $result + ['login' => $this->login, 'role' => 'root'], self::LIFETIME);
         } else {
             throw new AccessFail('Wrong pass or login.');

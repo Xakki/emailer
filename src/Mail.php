@@ -9,11 +9,11 @@ use Xakki\Emailer\Model\Template;
 
 class Mail implements \JsonSerializable
 {
-    /** @var array<string,string> */
+    /** @var array<string,mixed> */
     protected array $data = [];
 
     /**
-     * @return array<string,string>
+     * @return array<string,mixed>
      */
     public function jsonSerialize(): array
     {
@@ -115,6 +115,7 @@ class Mail implements \JsonSerializable
                 if (!empty($this->data[$k])) {
                     throw new Validation(sprintf('Data: try replace exist value by `%s`', $k), Validation::CODE_WRONG_VALUE);
                 }
+                // @phpstan-ignore-next-line
                 call_user_func($call, $r);
             } else {
                 if (!is_string($r) && !is_int($r)) {
@@ -128,17 +129,17 @@ class Mail implements \JsonSerializable
 
     public function getEmail(): string
     {
-        return $this->data['email'] ?? '';
+        return (string) ($this->data['email'] ?? '');
     }
 
     public function getEmailName(): string
     {
-        return $this->data['emailName'] ?? '';
+        return (string) ($this->data['emailName'] ?? '');
     }
 
     public function getSubject(): string
     {
-        return $this->data['subject'] ?? '';
+        return (string) ($this->data['subject'] ?? '');
     }
 
     /**
@@ -151,21 +152,21 @@ class Mail implements \JsonSerializable
 
     public function getDescr(): string
     {
-        return $this->data['descr'] ?? '';
+        return (string) ($this->data['descr'] ?? '');
     }
 
     public function getBody(): string
     {
-        return $this->data['body'] ?? '';
+        return (string) ($this->data['body'] ?? '');
     }
 
     public function getLocale(): string
     {
-        return $this->data['locale'] ?? Template::LOCALE_DEFAULT;
+        return (string) ($this->data['locale'] ?? Template::LOCALE_DEFAULT);
     }
 
     /**
-     * @return array<string,string>
+     * @return array<string,mixed>
      */
     public function getData(): array
     {

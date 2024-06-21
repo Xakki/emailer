@@ -48,11 +48,14 @@ composer-u:
 composer-i:
 	$(composer) i
 
-test:
+phpunit:
 	$(composer) phpunit
 
 phpstan:
 	$(composer) phpstan
+
+psalm:
+	$(composer) psalm
 
 swagger-generate:
 	docker run -v "${PWD}/src":/app -it tico/swagger-php /app/Controller/Api --output swagger.json

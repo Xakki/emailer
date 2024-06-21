@@ -181,10 +181,10 @@ class MailTest extends TestCase
     }
 
     /**
-     * @param MockObject|Queue $queue
-     * @return MockObject|Controller\Mail
+     * @param MockObject&Queue $queue
+     * @return MockObject&Controller\Mail
      */
-    protected function mockControllerMail(MockObject|Queue $queue, MockObject|Emailer $emailer): MockObject|Controller\Mail
+    protected function mockControllerMail(MockObject&Queue $queue, MockObject&Emailer $emailer): MockObject&Controller\Mail
     {
         $mock = $this->getMockBuilder(Controller\Mail::class)
             ->setConstructorArgs([$emailer])

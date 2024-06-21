@@ -58,7 +58,7 @@ class CreateProject
     {
         $project = new Project();
         $project->name = $this->name;
-        $project->params = json_encode($this->params);
+        $project->params = (string) json_encode($this->params);
         $project->token = md5(time() . $project->name . rand(0, 1000) . $project->params . rand(0, 1000));
         $project->id = Repository\Project::save($project->getProperties());
         if (!$project->id) {

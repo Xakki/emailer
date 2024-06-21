@@ -17,7 +17,7 @@ class HandlerResolverRoute implements \Phroute\Phroute\HandlerResolverInterface
         if (is_array($handler) && is_string($handler[0])) {
             $handler[0] = new $handler[0]($this->emailer);
         }
-
+        /** @psalm-suppress InvalidReturnStatement **/
         return $handler;
     }
 }

@@ -46,7 +46,7 @@ class UpdateSubscribe
                 $subscribe = new Model\Subscribe($where);
                 $subscribe->id = Repository\Subscribe::insert($subscribe->getProperties());
             } catch (UniqueConstraintViolationException $e) {
-                $subscribe = Repository\Subscribe::findOne($where);
+                $subscribe = Model\Subscribe::findOne($where);
             }
         }
         return $subscribe;

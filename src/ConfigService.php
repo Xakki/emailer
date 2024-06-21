@@ -7,6 +7,9 @@ namespace Xakki\Emailer;
 /**
  * @property-read array $api
  * @property-read array $db
+ * @property-read array $redis
+ * @property-read array $route
+ * @property-read array $migration
  */
 class ConfigService
 {
@@ -36,7 +39,7 @@ class ConfigService
         'port' => 6379,
     ];
 
-    /** @var array<string,callable>  */
+    /** @var array<string,mixed>  */
     protected array $route = [
         'ANY:/' => [Controller\Mail::class, 'index'],
         'GET:/emailer/home/{key}' => [Controller\Mail::class, 'home'],
@@ -83,6 +86,10 @@ class ConfigService
         }
     }
 
+    /**
+     * @param string $name
+     * @return mixed
+     */
     public function __get(string $name)
     {
         return $this->$name;

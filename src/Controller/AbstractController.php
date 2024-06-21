@@ -44,6 +44,7 @@ abstract class AbstractController
         if (!method_exists($this, $m)) {
             static::errorAction('Wrong action: ' . $name);
         }
+        // @phpstan-ignore-next-line
         return call_user_func_array([$this, $m], $arguments);
     }
 
@@ -63,7 +64,7 @@ abstract class AbstractController
 
     /**
      * @param string $view
-     * @param array<string,string> $vars
+     * @param array<string,int|string> $vars
      * @return string
      * @throws Exception\Exception
      */
@@ -73,7 +74,7 @@ abstract class AbstractController
         if (!file_exists($file)) {
             throw new Exception\Exception('View not exist: ' . $view);
         }
-        $html = file_get_contents($file);
+        $html = (string) file_get_contents($file);
         $html = strtr($html, $vars);
         $html = strtr($html, $vars);
         return $html;
@@ -90,13 +91,16 @@ abstract class AbstractController
      */
     protected function renderImage(array|string $file): string
     {
+        $type = '';
         if (is_array($file)) {
             $type = $file[0];
             $file = base64_decode($file[1]);
         } elseif (file_exists($file)) {
-            $file = file_get_contents($file);
+            $file = (string) file_get_contents($file);
             $type = mime_content_type($file);
-        } else {
+        }
+
+        if (!$file) {
             $this->logger->warning('Image file is not exist: ' . $file, ['controller']);
             [$type, $file] = self::DEFAULT_IMAGE;
         }

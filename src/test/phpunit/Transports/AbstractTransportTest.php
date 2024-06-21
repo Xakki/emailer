@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Xakki\Emailer\test\phpunit\Transports;
 
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Xakki\Emailer\Emailer;
 use Xakki\Emailer\test\phpunit\Mocks;
@@ -26,7 +27,7 @@ class AbstractTransportTest extends TestCase
         self::assertEquals($json, (string) $mock2);
     }
 
-    public function mockAbstractTransport(MockObject|Emailer $emailer): Transports\Smtp
+    public function mockAbstractTransport(MockObject&Emailer $emailer): Transports\Smtp
     {
         return $this->getMockBuilder(Transports\Smtp::class)
             ->setConstructorArgs([$emailer])

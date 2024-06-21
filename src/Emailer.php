@@ -57,6 +57,7 @@ class Emailer
             if (empty($this->config->db['password'])) {
                 throw new Exception\Exception('Use unique password for DB!');
             }
+            /** @psalm-suppress InvalidArgument **/
             $this->db = DriverManager::getConnection($this->config->db);
 //            $logger = new DebugStack();
 //            $this->Db->getConfiguration()->setSQLLogger($logger);
@@ -125,8 +126,9 @@ class Emailer
     public function dispatchConsole(array $args): string
     {
         try {
-            $controller = new Controller\Console($this);
-            return call_user_func_array([$controller, array_shift($args)], $args);
+            /** @var callable $call */
+            $call = [new Controller\Console($this), array_shift($args)];
+            return call_user_func_array($call, $args);
         } catch (\Throwable $e) {
             $this->logger->error($e, ['category' => 'console']);
             return $e->getMessage();

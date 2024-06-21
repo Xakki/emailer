@@ -41,5 +41,5 @@ RUN chmod 0644 /etc/cron.d/cronjob
 RUN crontab /etc/cron.d/cronjob
 
 STOPSIGNAL SIGKILL
-
-CMD printenv > /etc/environment && cron -f && php-fpm -R
+#printenv > /etc/environment &&
+CMD cron -f && docker-php-entrypoint php-fpm

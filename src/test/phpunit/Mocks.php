@@ -8,6 +8,7 @@ use Doctrine\Common\EventManager;
 use Doctrine\DBAL\Configuration;
 use Doctrine\DBAL\Driver;
 use Doctrine\DBAL\Driver\Connection as DriverConnection;
+use Doctrine\DBAL\Platforms\SqlitePlatform;
 use PHPUnit\Framework\MockObject\MockObject;
 use Xakki\Emailer\ConfigService;
 use Xakki\Emailer\Emailer;
@@ -33,7 +34,7 @@ trait Mocks
         'test' => 'Some message',
     ];
 
-    protected function mockLogger(): MockObject|Logger
+    protected function mockLogger(): MockObject&Logger
     {
 //        return new Logger('test');
         $mock = $this->getMockBuilder(Logger::class)
@@ -44,9 +45,8 @@ trait Mocks
 
     /**
      * @param array<mixed> $expects
-     * @return MockObject|DbConnection
      */
-    protected function mockDb(array $expects = []): MockObject|DbConnection
+    protected function mockDb(array $expects = []): MockObject&DbConnection
     {
         $eventManager = new EventManager();
         $driverMock   = $this->createMock(Driver::class);
@@ -60,13 +60,14 @@ trait Mocks
             $methodMock[] = $m;
         }
 
-        $platform = $this->getMockBuilder(\Doctrine\DBAL\Platforms\SqlitePlatform::class)
+        $platform = $this->getMockBuilder(SqlitePlatform::class)
             ->onlyMethods([])
             ->getMock();
         $options  = [
             'url' => 'sqlite::memory:',
             'platform' => $platform,
         ];
+        /** @var DbConnection&MockObject $db */
         $db = $this->getMockBuilder(DbConnection::class)
             ->setConstructorArgs([
                 $options,
@@ -95,18 +96,17 @@ trait Mocks
             }
             $db
                 ->method($m)
-                ->withConsecutive(...$args)
+                ->with(...$args)
                 ->willReturnOnConsecutiveCalls(...$returns);
         }
         return $db;
     }
 
     /**
-     * @param Project $project
+     * @param MockObject&Project $project
      * @param array<mixed> $dbExpects
-     * @return MockObject|Emailer
      */
-    protected function mockEmailer(Project $project, array $dbExpects): MockObject|Emailer
+    protected function mockEmailer(MockObject&Project $project, array $dbExpects): MockObject&Emailer
     {
         $config = new ConfigService(['db' => ['password' => 'testpass123']]);
 
@@ -129,9 +129,8 @@ trait Mocks
 
     /**
      * @param array<mixed> $dbExpects
-     * @return Emailer|MockObject
      */
-    protected function mockEmailerSuccess(array $dbExpects = []): Emailer|MockObject
+    protected function mockEmailerSuccess(array $dbExpects = []): Emailer&MockObject
     {
         $campaignData = [
             'id' => 1,
@@ -156,8 +155,9 @@ trait Mocks
         return $this->mockEmailer($project, $dbExpects);
     }
 
-    protected function mockSender(Emailer $emailer, int $projectId, int $campaignId): Sender|MockObject
+    protected function mockSender(MockObject&Emailer $emailer, int $projectId, int $campaignId): MockObject&Sender
     {
+        /** @var MockObject&Sender $mock */
         $mock = $this->getMockBuilder(Sender::class)
             ->setConstructorArgs([$emailer, $projectId, $campaignId])
             ->onlyMethods(['buildNewQueue'])
@@ -172,10 +172,9 @@ trait Mocks
 
     /**
      * @param array<mixed> $projectData
-     * @param Campaign $campaign
-     * @return MockObject|Project
+     * @param MockObject&Campaign $campaign
      */
-    protected function mockProject(array $projectData, Campaign $campaign): MockObject|Project
+    protected function mockProject(array $projectData, MockObject&Campaign $campaign): MockObject&Project
     {
         $mock = $this->getMockBuilder(Project::class)
             ->setConstructorArgs([$projectData])
@@ -192,9 +191,8 @@ trait Mocks
 
     /**
      * @param array<mixed> $campaignData
-     * @return MockObject|Campaign
      */
-    protected function mockCampaign(array $campaignData): MockObject|Campaign
+    protected function mockCampaign(array $campaignData): MockObject&Campaign
     {
         $notify = $this->mockNotify($campaignData['project_id']);
         $campaignData['notify_id'] = $notify->id;
@@ -211,9 +209,9 @@ trait Mocks
         return $mock;
     }
 
-    protected function mockQueueNew(MockObject|Emailer $emailer): MockObject|Queue
+    protected function mockQueueNew(MockObject&Emailer $emailer): MockObject&Queue
     {
-        /** @var MockObject|Queue $mock */
+        /** @var MockObject&Queue $mock */
         $mock = $this->getMockBuilder(Queue::class)
             ->onlyMethods([
                 'findAll',
@@ -259,11 +257,11 @@ trait Mocks
         return $mock;
     }
 
-    protected function mockQueue(int $id, MockObject|Emailer $emailer): MockObject|Queue
+    protected function mockQueue(int $id, MockObject&Emailer $emailer): MockObject&Queue
     {
         // @phpstan-ignore-next-line
         $emailer->getDb()->lastId = 1;
-        /** @var Queue $mock */
+        /** @var MockObject&Queue $mock */
         $mock = $this->mockQueueNew($emailer);
         $mock->id = $id;
         $mock->readed = '';
@@ -271,7 +269,7 @@ trait Mocks
         return $mock;
     }
 
-    protected function mockEmail(): MockObject|Email
+    protected function mockEmail(): MockObject&Email
     {
         $data = [
             'id' => 1,
@@ -294,7 +292,7 @@ trait Mocks
         return $mock;
     }
 
-    protected function mockDomain(): MockObject|Domain
+    protected function mockDomain(): MockObject&Domain
     {
         $data = [
             'id' => 1,
@@ -310,7 +308,7 @@ trait Mocks
         return $mock;
     }
 
-    protected function mockNotify(int $projectId): MockObject|Notify
+    protected function mockNotify(int $projectId): MockObject&Notify
     {
         $data = [
             'id' => 1,

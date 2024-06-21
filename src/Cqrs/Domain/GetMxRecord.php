@@ -31,8 +31,9 @@ class GetMxRecord
                 return [];
             }
             $val = $mx;
+            /** @psalm-suppress InvalidArgument **/
             $mem->set($key, $val, 86400 * 2);
         }
-        return $val;
+        return (array) $val;
     }
 }
