@@ -119,7 +119,12 @@ abstract class AbstractTransport implements \Stringable
             throw new \Exception('Must be Transport instance.');
         }
         foreach ($json['prop'] as $k => $v) {
-            $class->{$k} = $v;
+            // Ignore legacy/unknown keys from stored params (e.g. old capitalized
+            // Encoding/CharSet/SMTPOptions) — assigning them would create dynamic
+            // properties (deprecated as of PHP 8.4). Same guard as Model\AbstractModel.
+            if (property_exists($class, $k)) {
+                $class->{$k} = $v;
+            }
         }
 
         return $class;
