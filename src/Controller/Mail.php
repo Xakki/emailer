@@ -132,6 +132,9 @@ class Mail extends AbstractController
     {
         $queue = $this->initQueue($key, Model\Stats::ACTION_STATUS);
 
-        return $this->renderView('queueStatus.html', ['queueStatus' => $queue::TITLE_QUEUE_STATUS[$queue->status]]);
+        $vars = $queue->initReplacer();
+        $vars['{{queueStatus}}'] = $queue::TITLE_QUEUE_STATUS[$queue->status] ?? 'unknown';
+
+        return $this->renderView('queueStatus.html', $vars);
     }
 }
