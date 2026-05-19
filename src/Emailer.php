@@ -51,6 +51,11 @@ class Emailer
         return $this->logger;
     }
 
+    public function getConfig(): ConfigService
+    {
+        return $this->config;
+    }
+
     public function getDb(): Connection
     {
         if (!isset($this->db)) {

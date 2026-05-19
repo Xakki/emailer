@@ -10,6 +10,7 @@ namespace Xakki\Emailer;
  * @property-read array $redis
  * @property-read array $route
  * @property-read array $migration
+ * @property-read string $secret_key
  */
 class ConfigService
 {
@@ -48,6 +49,9 @@ class ConfigService
         'GET:/emailer/unsubscribe/{key:a}' => [Controller\Mail::class, 'unsubscribe'],
         'GET:/emailer/subscribe/{key:a}' => [Controller\Mail::class, 'subscribe'],
         'GET:/emailer/status/{key:a}' => [Controller\Mail::class, 'status'],
+        // Read-only e2e/test accessor: returns a rendered queued email body.
+        // Disabled (opaque 404) unless `secret_key` is set non-empty.
+        'GET:/emailer/get/{key:a}/{secret:c}' => [Controller\Mail::class, 'get'],
         'POST:/emailer/api/v{version:i}/panel/login' => [Controller\Api\Panel::class, 'login'],
         'GET:/emailer/api/v{version:i}/panel/head' => [Controller\Api\Panel::class, 'head'],
         'GET:/emailer/api/v{version:i}/panel/dashboard' => [Controller\Api\Panel::class, 'dashboard'],
@@ -66,6 +70,15 @@ class ConfigService
         ],
         'all_or_nothing' => true,
     ];
+
+    /**
+     * Shared secret for the read-only /emailer/get test accessor.
+     * Sourced from env SECRET_EMAILER_KEY (see wep Mail::getEmailer()).
+     * Untyped on purpose: getenv() yields `false` when unset — absorbing it
+     * here keeps email sending working ('' simply disables /emailer/get).
+     * @var string
+     */
+    protected $secret_key = '';
 
     /**
      * @param array<string,mixed> $input

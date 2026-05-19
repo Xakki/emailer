@@ -18,6 +18,7 @@ use Xakki\Emailer\Model;
  * @method unsubscribe(string $key)
  * @method subscribe(string $key)
  * @method status(string $key)
+ * @method get(string $key, string $secret)
  */
 class Mail extends AbstractController
 {
@@ -136,5 +137,50 @@ class Mail extends AbstractController
         $vars['{{queueStatus}}'] = $queue::TITLE_QUEUE_STATUS[$queue->status] ?? 'unknown';
 
         return $this->renderView('queueStatus.html', $vars);
+    }
+
+    /**
+     * Read-only e2e/test accessor: returns the rendered HTML body of one
+     * queued email. SECURITY: opaque 404 on ANY failure (empty/missing
+     * secret, mismatch, malformed key, unknown queue, render error) so the
+     * route is not probeable and never reveals why. The secret compare is
+     * constant-time; an unset SECRET_EMAILER_KEY ('') keeps the route dead.
+     * Deliberately does NOT call initQueue(): must not mutate readed/stats
+     * (do not "helpfully" refactor it to reuse initQueue).
+     */
+    protected function actionGet(string $key, string $secret): string
+    {
+        $configured = (string) $this->emailer->getConfig()->secret_key;
+        if ($configured === '' || !hash_equals($configured, $secret)) {
+            return $this->notFound();
+        }
+
+        $decoded = Helper\Tools::base64UrlDecode($key);
+        if (!$decoded || !str_contains($decoded, '-')) {
+            return $this->notFound();
+        }
+        [$hash, $id] = explode('-', $decoded, 2);
+        $id = (int) $id;
+        if ($hash === '' || $id <= 0) {
+            return $this->notFound();
+        }
+
+        try {
+            $queue = $this->getQueueById($id);
+            if (!hash_equals((string) $queue->getHash(), $hash)) {
+                return $this->notFound();
+            }
+            return $queue->getBody();
+        } catch (\Throwable $e) {
+            // Post-auth failure only: log queue id (never the secret/key).
+            $this->logger->warning('emailer get failed', ['id' => $id, 'msg' => $e->getMessage()]);
+            return $this->notFound();
+        }
+    }
+
+    private function notFound(): string
+    {
+        http_response_code(404);
+        return 'Not Found';
     }
 }
