@@ -8,7 +8,6 @@ use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Xakki\Emailer\Exception\DataNotFound;
 use Xakki\Emailer\Exception\Exception;
 use Xakki\Emailer\Helper;
-use Xakki\Emailer\Repository\AbstractRepository;
 
 abstract class AbstractModel
 {
@@ -120,7 +119,7 @@ abstract class AbstractModel
     public function insert(): static
     {
         $data = $this->getProperties();
-        /** @var AbstractRepository $rep */
+        /** @var class-string<\Xakki\Emailer\Repository\AbstractRepository> $rep */
         $rep = static::repositoryClass();
         $this->setPk($rep::insert($data));
         return $this;
@@ -160,7 +159,7 @@ abstract class AbstractModel
         foreach ($fields as $field) {
             $data[$field] = $this->{$field};
         }
-        /** @var AbstractRepository $rep */
+        /** @var class-string<\Xakki\Emailer\Repository\AbstractRepository> $rep */
         $rep = static::repositoryClass();
         if (count($data)) {
             return $rep::updateById($this->id, $data);
@@ -179,8 +178,7 @@ abstract class AbstractModel
     }
 
     /**
-     * @return AbstractRepository
-     * @phpstan-return class-string<AbstractRepository>
+     * @return class-string<\Xakki\Emailer\Repository\AbstractRepository>
      */
     abstract protected static function repositoryClass(): string;
 }

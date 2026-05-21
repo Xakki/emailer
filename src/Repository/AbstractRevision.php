@@ -15,7 +15,7 @@ abstract class AbstractRevision extends AbstractRepository
     /**
      * @param int $id
      * @param array<string, mixed> $data
-     * @param array<int, int|string|Type|null>|array<string, int|string|Type|null> $types
+     * @param array<string, \Doctrine\DBAL\ParameterType|Type|string> $types
      * @return int
      * @throws \Doctrine\DBAL\Exception
      * @throws \Xakki\Emailer\Exception\Exception

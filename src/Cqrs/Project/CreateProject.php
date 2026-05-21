@@ -13,12 +13,12 @@ use Xakki\Emailer\Repository;
 class CreateProject
 {
     protected string $name;
-    /** @var array<string,string>  */
+    /** @var array<string,mixed>  */
     protected array $params;
 
     /**
      * @param string $name
-     * @param array<string,string> $params
+     * @param array<string,mixed> $params
      * @throws Exception\Validation
      */
     public function __construct(string $name, array $params)
@@ -29,7 +29,7 @@ class CreateProject
     }
 
     /**
-     * @param array<string,string> $params
+     * @param array<string,mixed> $params
      * @return void
      * @throws Exception\Validation
      */
@@ -45,11 +45,12 @@ class CreateProject
             throw new Exception\Validation('Require params NAME_LOGO - its png/jpg/gif file', Exception\Validation::CODE_REQUIRE);
         }
 
-        if (str_contains($params[Template::NAME_URL_LOGO], DIRECTORY_SEPARATOR)) {
-            if (!file_exists($params[Template::NAME_URL_LOGO])) {
+        $logo = (string) $params[Template::NAME_URL_LOGO];
+        if (str_contains($logo, DIRECTORY_SEPARATOR)) {
+            if (!file_exists($logo)) {
                 throw new Exception\Validation('File project.logo - not exist', Exception\Validation::CODE_REQUIRE);
             } else {
-                $params[Template::NAME_URL_LOGO] = Tools::getBase64File($params[Template::NAME_URL_LOGO]);
+                $params[Template::NAME_URL_LOGO] = Tools::getBase64File($logo);
             }
         }
     }

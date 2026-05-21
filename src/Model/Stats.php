@@ -19,8 +19,9 @@ class Stats extends AbstractModel
     public int $created;
     public int $project_id;
     public int $queue_id;
-    public string $uri_ref;
-    public int $domain_id;
+    // Nullable in schema (stats.uri_ref / domain_id).
+    public ?string $uri_ref = null;
+    public ?int $domain_id = null;
     public int $browser_id;
     public int $action;
 

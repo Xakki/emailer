@@ -4,7 +4,6 @@ parameters:
     level: 7
     paths:
         - src
-#    excludePaths:
-#        - src/test
-#    ignoreErrors:
-#        - '#test#'
+        - tests
+    excludePaths:
+        - src/Migration/*

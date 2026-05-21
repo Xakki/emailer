@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Xakki\Emailer\test\phpunit;
+namespace Xakki\Emailer\Tests;
 
 use PHPUnit\Framework\TestCase;
 use Xakki\Emailer\Mail;
@@ -36,6 +36,7 @@ class SenderTest extends TestCase
         $mail->setData($mailData);
 
         $sender = $this->mockSender($emailer, $project->id, $campaign->id);
-        self::assertTrue(is_string($sender->send($mail)));
+        $hashRoute = $sender->send($mail);
+        self::assertNotEmpty($hashRoute);
     }
 }

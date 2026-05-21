@@ -96,7 +96,10 @@ class Mail implements \JsonSerializable
     }
 
     /**
-     * @param array<string,mixed> $data
+     * Accepts arbitrary decoded JSON, so keys may be non-string; non-string
+     * keys are rejected below by design.
+     *
+     * @param array<array-key, mixed> $data
      * @return $this
      * @throws Validation
      */

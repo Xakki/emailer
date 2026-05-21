@@ -17,12 +17,13 @@ class Campaign extends AbstractModel
 
     public string $name; // Subject
     public string $status;
-    public string $params;
-    public string $replacers;
-    public int $limit_day;
-    public int $cnt_send;
-    public int $cnt_queue;
-    public ?int $transport_id;
+    // Nullable in schema (campaign.params / campaign.replacers TEXT NULL).
+    public ?string $params = null;
+    public ?string $replacers = null;
+    public int $limit_day = 0;
+    public int $cnt_send = 0;
+    public int $cnt_queue = 0;
+    public ?int $transport_id = null;
     public int $notify_id;
     public int $tpl_wrapper_id;
     public int $tpl_content_id;

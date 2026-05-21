@@ -89,7 +89,7 @@ class Emailer
 
     /**
      * @param string $name
-     * @param array<string,string> $params
+     * @param array<string,mixed> $params
      * @return Model\Project
      * @throws Exception\Exception
      */

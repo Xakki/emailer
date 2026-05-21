@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Xakki\Emailer\test\phpunit\Controller;
+namespace Xakki\Emailer\Tests\Controller;
 
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -13,7 +13,7 @@ use Xakki\Emailer\Model\Queue;
 use Xakki\Emailer\Model\Stats;
 use Xakki\Emailer\Model\Subscribe;
 use Xakki\Emailer\Model\Template;
-use Xakki\Emailer\test\phpunit\Mocks;
+use Xakki\Emailer\Tests\Mocks;
 
 class MailTest extends TestCase
 {

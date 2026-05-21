@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Xakki\Emailer\Repository;
 
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Query\QueryBuilder;
 use Doctrine\DBAL\Types\Type;
 use Generator;
@@ -29,7 +31,7 @@ abstract class AbstractRepository
      * Insert or Update
      *
      * @param array<string, mixed> $data
-     * @param array<int, int|string|Type|null>|array<string, int|string|Type|null> $types
+     * @param array<string, ParameterType|Type|string> $types
      * @return int ID
      * @throws \Doctrine\DBAL\Exception
      * @throws Exception\Exception
@@ -54,7 +56,7 @@ abstract class AbstractRepository
 
     /**
      * @param array<string, mixed> $data
-     * @param array<int, int|string|Type|null>|array<string, int|string|Type|null> $types Parameter types
+     * @param array<string, ParameterType|Type|string> $types Parameter types
      * @return int Id
      * @throws Exception\Exception
      * @throws \Doctrine\DBAL\Exception
@@ -91,7 +93,7 @@ abstract class AbstractRepository
     /**
      * @param int $id
      * @param array<string, mixed> $data
-     * @param array<int, int|string|Type|null>|array<string, int|string|Type|null> $types Parameter types
+     * @param array<string, ParameterType|Type|string> $types Parameter types
      * @return int Count
      * @throws \Doctrine\DBAL\Exception
      * @throws Exception\Exception
@@ -120,7 +122,7 @@ abstract class AbstractRepository
     /**
      * @param array<string, mixed> $data
      * @param array<string, mixed> $criteria
-     * @param array<int, int|string|Type|null>|array<string, int|string|Type|null> $types
+     * @param array<string, ParameterType|Type|string> $types
      * @return int
      * @throws \Doctrine\DBAL\Exception
      */
@@ -128,16 +130,18 @@ abstract class AbstractRepository
     {
         $cnt = (int) static::getDb()->update(static::tableName(), $data, $criteria, $types);
 
-        Emailer::i()->getLogger()->debug('UPDATE `' . static::tableName() . '` => affected rows ' . $cnt . '.',
-            ['update', 'data' => $data, 'criteria' => $criteria]);
+        Emailer::i()->getLogger()->debug(
+            'UPDATE `' . static::tableName() . '` => affected rows ' . $cnt . '.',
+            ['update', 'data' => $data, 'criteria' => $criteria]
+        );
 
         return $cnt;
     }
 
     public static function inc(int $id, string $field, int $val = 1): int
     {
-        return (int) self::getDb()->executeStatement('UPDATE ' . static::tableName() .
-            ' SET ' . $field . ' = ' . $field . ' + ? WHERE id = ?', [$val, $id]);
+        return (int) self::getDb()->executeStatement('UPDATE ' . static::tableName()
+            . ' SET ' . $field . ' = ' . $field . ' + ? WHERE id = ?', [$val, $id]);
     }
 
     /**
@@ -154,7 +158,9 @@ abstract class AbstractRepository
         foreach ($data as $k => $val) {
             if (is_array($val)) {
                 $query->andWhere($k . ' IN (:' . $k . ')');
-                $query->setParameter($k, $val, 'array');
+                // DBAL 4 dropped the 'array' string type; ArrayParameterType::STRING
+                // preserves the DBAL 3 default (PARAM_STR_ARRAY) behaviour.
+                $query->setParameter($k, $val, ArrayParameterType::STRING);
             } else {
                 $query->andWhere($k . '=:' . $k);
                 $query->setParameter($k, $val);
@@ -286,10 +292,10 @@ abstract class AbstractRepository
 
     /**
      * @param array<string, mixed> $data
-     * @return \Doctrine\DBAL\Result
+     * @return int Affected rows
      * @throws \Doctrine\DBAL\Exception
      */
-    public static function delete(array $data)
+    public static function delete(array $data): int
     {
         $query = self::getDb()->createQueryBuilder()
             ->delete(static::tableName());
@@ -299,6 +305,7 @@ abstract class AbstractRepository
             $query->setParameter($k, $val);
         }
         Emailer::i()->getLogger()->debug($query->getSQL(), ['delete']);
-        return $query->executeQuery();
+        // DBAL 4: write statements must go through executeStatement(), not executeQuery().
+        return (int) $query->executeStatement();
     }
 }

@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Xakki\Emailer\test\phpunit;
+namespace Xakki\Emailer\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Xakki\Emailer\Exception\Validation;
 use Xakki\Emailer\Mail;
@@ -59,12 +60,11 @@ class MailTest extends TestCase
         $campaign = $this->mockCampaign($campaignData);
 
         $mail->validate($campaign->getRequiredParams());
-        self::assertIsBool(true);
-//        self::assertEquals($mailData + ['subject' => $campaign->name], $mail->getData());
+        self::assertSame($mailData, $mail->getData());
+        self::assertSame('test@example.com', $mail->getEmail());
     }
 
     /**
-     * @dataProvider errorDataProvider
      * @param array<mixed> $mailData
      * @param array<mixed> $replacer
      * @param int $expectCode
@@ -72,6 +72,7 @@ class MailTest extends TestCase
      * @return void
      * @throws Validation
      */
+    #[DataProvider('errorDataProvider')]
     public function testErrors(array $mailData, array $replacer, int $expectCode, string $expectMess): void
     {
         $this->expectException(Validation::class);
@@ -94,7 +95,7 @@ class MailTest extends TestCase
     /**
      * @return array<mixed>
      */
-    public function errorDataProvider(): array
+    public static function errorDataProvider(): array
     {
         return [
             'Error. Email is required' => [

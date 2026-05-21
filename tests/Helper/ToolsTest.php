@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Xakki\Emailer\test\phpunit\Helper;
+namespace Xakki\Emailer\Tests\Helper;
 
 use PHPUnit\Framework\TestCase;
 use Xakki\Emailer\Helper\Tools;
-use Xakki\Emailer\test\phpunit\Mocks;
+use Xakki\Emailer\Tests\Mocks;
 
 class ToolsTest extends TestCase
 {

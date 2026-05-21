@@ -57,6 +57,13 @@ abstract class AbstractController
         $this->viewDir = $viewDir;
     }
 
+    /**
+     * Base behaviour aborts the request by throwing; subclasses (e.g. Api)
+     * override this to return an error payload instead. The `mixed` return
+     * type is the honest common contract, so the "no return statement" sniff
+     * is a false positive here and intentionally silenced.
+     */
+    // phpcs:ignore WebimpressCodingStandard.Functions.ReturnType.InvalidNoReturn
     protected static function errorAction(string $message): mixed
     {
         throw new Exception\DataNotFound($message);
@@ -96,8 +103,11 @@ abstract class AbstractController
             $type = $file[0];
             $file = base64_decode($file[1]);
         } elseif (file_exists($file)) {
+            // mime_content_type() expects a path, not file contents — read the
+            // type from the path before slurping the bytes, otherwise the call
+            // crashes on the embedded null bytes of a binary image.
+            $type = (string) mime_content_type($file);
             $file = (string) file_get_contents($file);
-            $type = mime_content_type($file);
         }
 
         if (!$file) {

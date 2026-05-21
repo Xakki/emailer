@@ -33,9 +33,12 @@ class AppendStats
         $model->project_id = $this->queue->project_id;
         $model->queue_id = $this->queue->id;
         if (!empty($_SERVER['HTTP_REFERER']) && $ref = parse_url($_SERVER['HTTP_REFERER'])) {
-            if ($ref['host'] !== $_SERVER['HTTP_HOST']) {
-                $model->uri_ref = $ref['path'] . (!empty($ref['query']) ? '?' . $ref['query'] : '');
-                $model->domain_id = (new Cqrs\Domain\GetDomain($ref['host']))->handler()->id;
+            $refHost = $ref['host'] ?? '';
+            $reqHost = $_SERVER['HTTP_HOST'] ?? '';
+            if ($refHost !== '' && $refHost !== $reqHost) {
+                $refPath = $ref['path'] ?? '';
+                $model->uri_ref = $refPath . (!empty($ref['query']) ? '?' . $ref['query'] : '');
+                $model->domain_id = (new Cqrs\Domain\GetDomain($refHost))->handler()->id;
             }
         }
         $model->browser_id = (new Cqrs\Browser\GetBrowserId($_SERVER['HTTP_USER_AGENT'] ?? ''))->handler();

@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Xakki\Emailer;
 
 /**
- * @property-read array $api
- * @property-read array $db
- * @property-read array $redis
- * @property-read array $route
- * @property-read array $migration
+ * @property-read array<string, mixed> $api
+ * @property-read array<string, mixed> $db
+ * @property-read array<string, mixed> $redis
+ * @property-read array<string, mixed> $route
+ * @property-read array<string, mixed> $migration
  * @property-read string $secret_key
  */
 class ConfigService
@@ -76,8 +76,14 @@ class ConfigService
      * Sourced from env SECRET_EMAILER_KEY (see wep Mail::getEmailer()).
      * Untyped on purpose: getenv() yields `false` when unset — absorbing it
      * here keeps email sending working ('' simply disables /emailer/get).
+     *
+     * snake_case is required: __construct() maps config-array keys straight to
+     * properties, and the public config key is `secret_key`. Renaming would be
+     * a config BC break, so the camelCase sniff is intentionally silenced.
+     *
      * @var string
      */
+    // phpcs:ignore WebimpressCodingStandard.NamingConventions.ValidVariableName.NotCamelCapsProperty
     protected $secret_key = '';
 
     /**

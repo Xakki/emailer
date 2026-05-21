@@ -27,10 +27,11 @@ class Validations extends Validation
             if (!is_string($r[0])) {
                 throw new \Exception('Wrong validation data format: first value must be string.');
             }
-            if (!isset(self::CODE_MESSAGES[$r[1]])) {
+            $code = (int) $r[1];
+            if (!isset(self::CODE_MESSAGES[$code])) {
                 throw new \Exception('Wrong validation data format: second value must be message code.');
             }
-            $r[1] = self::CODE_MESSAGES[$r[1]];
+            $r[1] = self::CODE_MESSAGES[$code];
         }
         $this->data = $data;
         parent::__construct($this->title, self::CODE_VALIDATIONS);
