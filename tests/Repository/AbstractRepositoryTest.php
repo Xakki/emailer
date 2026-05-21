@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Xakki\Emailer\test\phpunit\Repository;
+namespace Xakki\Emailer\Tests\Repository;
 
 use Doctrine\DBAL\ParameterType;
 use PHPUnit\Framework\TestCase;
 use Xakki\Emailer\Repository\AbstractRepository;
-use Xakki\Emailer\test\phpunit\DbConnection;
-use Xakki\Emailer\test\phpunit\Mocks;
+use Xakki\Emailer\Tests\DbConnection;
+use Xakki\Emailer\Tests\Mocks;
 
 class AbstractRepositoryTest extends TestCase
 {

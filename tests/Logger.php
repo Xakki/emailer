@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Xakki\Emailer\test\phpunit;
+namespace Xakki\Emailer\Tests;
 
 use Psr\Log\AbstractLogger;
 

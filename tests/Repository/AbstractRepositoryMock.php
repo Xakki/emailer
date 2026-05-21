@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Xakki\Emailer\test\phpunit\Repository;
+namespace Xakki\Emailer\Tests\Repository;
 
 use Xakki\Emailer\Repository\AbstractRepository;
-use Xakki\Emailer\test\phpunit\DbConnection;
+use Xakki\Emailer\Tests\DbConnection;
 
 class AbstractRepositoryMock extends AbstractRepository
 {

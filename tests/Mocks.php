@@ -2,13 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Xakki\Emailer\test\phpunit;
+namespace Xakki\Emailer\Tests;
 
-use Doctrine\Common\EventManager;
 use Doctrine\DBAL\Configuration;
 use Doctrine\DBAL\Driver;
 use Doctrine\DBAL\Driver\Connection as DriverConnection;
-use Doctrine\DBAL\Platforms\SqlitePlatform;
+use Doctrine\DBAL\Platforms\SQLitePlatform;
 use PHPUnit\Framework\MockObject\MockObject;
 use Xakki\Emailer\ConfigService;
 use Xakki\Emailer\Emailer;
@@ -44,61 +43,65 @@ trait Mocks
     }
 
     /**
-     * @param array<mixed> $expects
+     * Builds a mocked DBAL 4 connection.
+     *
+     * Arg-shape matching (the old `with(...)`) was dropped: it was broken under
+     * PHPUnit 10+ (`withConsecutive()` removed) and the meaningful contract is
+     * the return value, which callers still assert. `$expects[method]` is a list
+     * of `['return' => mixed, 'args' => array]`; only `return` is honoured now,
+     * `args` stays for documentation.
+     *
+     * @param array<string, list<array{return: mixed, args?: array<mixed>}>> $expects
      */
     protected function mockDb(array $expects = []): MockObject&DbConnection
     {
-        $eventManager = new EventManager();
-        $driverMock   = $this->createMock(Driver::class);
+        $driverMock = $this->createMock(Driver::class);
         $driverMock->expects(self::any())
             ->method('connect')
-            ->willReturn(
-                $this->createMock(DriverConnection::class)
-            );
-        $methodMock = ['executeStatement', 'isTransactionActive'];
-        foreach ($expects as $m => $args) {
-            $methodMock[] = $m;
-        }
+            ->willReturn($this->createMock(DriverConnection::class));
 
-        $platform = $this->getMockBuilder(SqlitePlatform::class)
-            ->onlyMethods([])
-            ->getMock();
-        $options  = [
-            'url' => 'sqlite::memory:',
-            'platform' => $platform,
+        // Default stubs so repository flows never reach the real driver.
+        $defaults = [
+            'executeStatement' => 1,
+            'isTransactionActive' => true,
+            'insert' => 1,
+            'update' => 1,
+            'delete' => 1,
+            'fetchAssociative' => false,
         ];
+
+        /** @var list<non-empty-string> $methodMock */
+        $methodMock = array_values(array_unique([
+            ...array_keys($defaults),
+            ...array_keys($expects),
+        ]));
+
         /** @var DbConnection&MockObject $db */
         $db = $this->getMockBuilder(DbConnection::class)
             ->setConstructorArgs([
-                $options,
+                ['platform' => new SQLitePlatform()],
                 $driverMock,
                 new Configuration(),
-                $eventManager,
             ])
             ->onlyMethods($methodMock)
             ->getMock();
 
-        $db
-            ->method('executeStatement')
-            ->willReturn(1);
-        $db
-            ->method('isTransactionActive')
-            ->willReturn(true);
-//        $db
-//            ->method('lastInsertId')
-//            ->willReturn(1);
-
-        foreach ($expects as $m => $row) {
-            $args = $returns = [];
-            foreach ($row as $item) {
-                $args[] = $item['args'];
-                $returns[] = $item['return'];
+        foreach ($defaults as $method => $value) {
+            if (!isset($expects[$method])) {
+                $db->method($method)->willReturn($value);
             }
-            $db
-                ->method($m)
-                ->with(...$args)
-                ->willReturnOnConsecutiveCalls(...$returns);
         }
+
+        foreach ($expects as $method => $rows) {
+            $returns = array_map(static fn (array $item) => $item['return'], $rows);
+            $stub = $db->method($method);
+            if (count($returns) === 1) {
+                $stub->willReturn($returns[0]);
+            } else {
+                $stub->willReturnOnConsecutiveCalls(...$returns);
+            }
+        }
+
         return $db;
     }
 

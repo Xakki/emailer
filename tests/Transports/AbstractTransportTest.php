@@ -2,37 +2,42 @@
 
 declare(strict_types=1);
 
-namespace Xakki\Emailer\test\phpunit\Transports;
+namespace Xakki\Emailer\Tests\Transports;
 
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Xakki\Emailer\Emailer;
-use Xakki\Emailer\test\phpunit\Mocks;
+use Xakki\Emailer\Model\Queue;
+use Xakki\Emailer\Tests\Mocks;
 use Xakki\Emailer\Transports;
 
 class AbstractTransportTest extends TestCase
 {
     use Mocks;
 
-    public function testSuccess(): void
+    public function testToStringRoundTrip(): void
     {
         $emailer = $this->mockEmailerSuccess();
-        $mock = $this->mockAbstractTransport($emailer);
-        $mock->fromEmail = 'test@example.com';
-        $mock->fromName = 'test';
-        $mock->replyEmail = 'test2@example.com';
-        $mock->replyName = 'test2';
-        $json = (string) $mock;
-        $mock2 = Transports\AbstractTransport::fromString($json, $emailer);
-        self::assertEquals($json, (string) $mock2);
+
+        $transport = new Transports\Smtp($emailer);
+        $transport->fromEmail = 'test@example.com';
+        $transport->fromName = 'test';
+        $transport->replyEmail = 'test2@example.com';
+        $transport->replyName = 'test2';
+
+        $json = (string) $transport;
+        $restored = Transports\AbstractTransport::fromString($json, $emailer);
+
+        self::assertInstanceOf(Transports\Smtp::class, $restored);
+        self::assertSame($json, (string) $restored);
+        self::assertSame('test@example.com', $restored->fromEmail);
     }
 
-    public function mockAbstractTransport(MockObject&Emailer $emailer): Transports\Smtp
+    public function testGetSmtpErrorStatusMapping(): void
     {
-        return $this->getMockBuilder(Transports\Smtp::class)
-            ->setConstructorArgs([$emailer])
-            ->enableProxyingToOriginalMethods()
-//            ->onlyMethods(['__toString'])
-            ->getMock();
+        $emailer = $this->mockEmailerSuccess();
+        $transport = new Transports\Smtp($emailer);
+
+        self::assertSame(Queue::QUEUE_STATUS_SPAM, $transport->getSmtpErrorStatus('550 classified as SPAM'));
+        self::assertSame(Queue::QUEUE_STATUS_INVALID_MAIL, $transport->getSmtpErrorStatus('550 No such user here'));
+        self::assertSame(Queue::QUEUE_STATUS_ERROR, $transport->getSmtpErrorStatus('completely unrelated text'));
     }
 }

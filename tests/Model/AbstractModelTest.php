@@ -2,24 +2,32 @@
 
 declare(strict_types=1);
 
-namespace Xakki\Emailer\test\phpunit\Model;
+namespace Xakki\Emailer\Tests\Model;
 
 use PHPUnit\Framework\TestCase;
 use Xakki\Emailer\Model\AbstractModel;
-use Xakki\Emailer\test\phpunit\Mocks;
 
 class AbstractModelTest extends TestCase
 {
-    use Mocks;
-
     public function testConstruct(): void
     {
-        $mock = $this->mockAbstractModel();
-        self::assertEquals(1, $mock->id);
+        $mock = $this->mockAbstractModel(['id' => 1]);
+        self::assertSame(1, $mock->id);
     }
 
-    public function mockAbstractModel(): AbstractModel
+    public function testSetPkAndGetPk(): void
     {
-        return $this->getMockForAbstractClass(AbstractModel::class, [['id' => 1]]);
+        $mock = $this->mockAbstractModel();
+        $mock->setPk(42);
+        self::assertSame(42, $mock->getPk());
+        self::assertSame('id', $mock::getPkName());
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     */
+    public function mockAbstractModel(array $input = []): AbstractModel
+    {
+        return new AbstractModelMock($input);
     }
 }
