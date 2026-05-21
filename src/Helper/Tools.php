@@ -10,7 +10,7 @@ final class Tools
 {
     /**
      * @param string $txt
-     * @param array<string, string> $m
+     * @param array<int, string> $m Out param: unique replacer names found in $txt
      * @return int
      */
     public static function hasReplacer(string $txt, array &$m = []): int

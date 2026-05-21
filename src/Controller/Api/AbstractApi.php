@@ -169,7 +169,12 @@ abstract class AbstractApi extends AbstractController
     }
 
     /**
-     * @return bool
+     * Authentication hook. The default permits every request; real projects
+     * override this to validate a token and throw on failure. The `bool`
+     * return type is the documented extension contract, so the "returns only
+     * true" sniff is intentionally silenced rather than narrowed to `true`.
+     *
+     * phpcs:ignore WebimpressCodingStandard.Functions.ReturnType.ReturnBooleanType
      */
     protected function xAuth(): bool
     {

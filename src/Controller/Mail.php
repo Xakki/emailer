@@ -98,10 +98,10 @@ class Mail extends AbstractController
     protected function initQueue(string $key, int $action): Model\Queue
     {
         $key = Helper\Tools::base64UrlDecode($key);
-        if (!$key) {
+        if (!$key || !str_contains($key, '-')) {
             throw new Exception\Validation('Bad request #1', Exception\Validation::CODE_REQUEST_BAD);
         }
-        [$hash, $id] = explode('-', $key);
+        [$hash, $id] = explode('-', $key, 2);
         $id = (int) $id;
         if (!$hash || !$id) {
             throw new Exception\Validation('Bad request #2', Exception\Validation::CODE_REQUEST_BAD);
