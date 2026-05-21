@@ -6,3 +6,6 @@ composer.lock
 *.cache
 .env
 .phpcs-cache
+/.phpunit.cache/
+/build/
+/coverage/
