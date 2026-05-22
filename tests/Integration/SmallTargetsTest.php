@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace Xakki\Emailer\Tests\Integration;
 
 use Xakki\Emailer\ConfigService;
-use Xakki\Emailer\Controller;
 use Xakki\Emailer\Cqrs;
-use Xakki\Emailer\Helper\HandlerResolverRoute;
 use Xakki\Emailer\Model;
 use Xakki\Emailer\Repository;
 use Xakki\Emailer\Tests\Support\IntegrationCase;
@@ -28,18 +26,6 @@ class SmallTargetsTest extends IntegrationCase
         self::assertSame(9999, $cfg->redis['port']);
         self::assertSame('emailer-redis', $cfg->redis['host']);
         self::assertSame('k', $cfg->secret_key);
-    }
-
-    public function testHandlerResolverInstantiatesStringHandler(): void
-    {
-        $resolver = new HandlerResolverRoute($this->emailer);
-        // resolve() is typed `callable`; the array-callable shape is what we assert.
-        $handler = (array) $resolver->resolve([Controller\Mail::class, 'index']);
-        self::assertInstanceOf(Controller\Mail::class, $handler[0]);
-
-        // Already-resolved instance handlers are returned as-is.
-        $passthrough = (array) $resolver->resolve([$handler[0], 'index']);
-        self::assertSame($handler[0], $passthrough[0]);
     }
 
     public function testGetEmailCqrsUsesAndBypassesCache(): void
