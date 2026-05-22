@@ -44,7 +44,6 @@
     "phpmailer/phpmailer": "^6.9",
     "doctrine/dbal": "^4.2",
     "doctrine/migrations": "^3.8",
-    "phroute/phroute": "^2.2",
     "monolog/monolog": "^3.5"
   },
   "require-dev": {

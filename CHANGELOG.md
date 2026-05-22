@@ -16,6 +16,11 @@ follow [Semantic Versioning](https://semver.org/).
 - Open‑source project files: `LICENSE` (GPL‑3.0‑or‑later), `README`, `CONTRIBUTING`,
   this changelog.
 
+### Removed
+- Dropped the unmaintained `phroute/phroute` dependency; HTTP routing now uses a
+  small built‑in `Helper\Router` (same route DSL, so configuration is unchanged).
+  This also removes the implicit‑nullable deprecations that would become fatal on PHP 9.
+
 ### Changed
 - Minimum PHP requirement raised to **>= 8.4**.
 - Migrated from **doctrine/dbal 3 → 4** (and `doctrine/migrations` ^3.8), bumped
