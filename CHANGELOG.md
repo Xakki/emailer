@@ -20,6 +20,18 @@ follow [Semantic Versioning](https://semver.org/).
 - Dropped the unmaintained `phroute/phroute` dependency; HTTP routing now uses a
   small built‑in `Helper\Router` (same route DSL, so configuration is unchanged).
   This also removes the implicit‑nullable deprecations that would become fatal on PHP 9.
+- **BC**: removed the `Emailer::i()` global accessor and the
+  `protected static self $instances` singleton store. Callers that previously
+  reached `Emailer::i()->getDb()` now go through `AbstractRepository::emailer()`,
+  which is wired once by `Emailer::__construct()`. No user‑level code change is
+  required if you construct `Emailer` normally; only direct callers of the
+  static accessor break.
+
+### Deprecated
+- `Xakki\Emailer\Repository\expresion\NullExpresion` (namespace and class name
+  both carried typos). Use `Xakki\Emailer\Repository\Expression\NullExpression`
+  instead. The old class now extends the new one, so `instanceof` continues to
+  work for both names. Removal target: v2.
 
 ### Changed
 - Minimum PHP requirement raised to **>= 8.4**.

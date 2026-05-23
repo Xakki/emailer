@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Xakki\Emailer\Cqrs\Domain;
 
-use Xakki\Emailer\Emailer;
+use Xakki\Emailer\Repository\AbstractRepository;
 
 class GetMxRecord
 {
@@ -22,7 +22,7 @@ class GetMxRecord
      */
     public function handler(): array
     {
-        $mem = Emailer::i()->getCache();
+        $mem = AbstractRepository::emailer()->getCache();
         $key = self::MEM_KEY_MX . ':' . $this->domain;
         $val = $mem->get($key);
         if (!$val) {

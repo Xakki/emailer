@@ -9,7 +9,7 @@ use Doctrine\Migrations\DependencyFactory;
 use Doctrine\Migrations\Tools\Console\Command;
 use Symfony\Component\Console\Application;
 use Xakki\Emailer\Cqrs\CqrsInterface;
-use Xakki\Emailer\Emailer;
+use Xakki\Emailer\Repository\AbstractRepository;
 
 class Migration implements CqrsInterface
 {
@@ -19,9 +19,10 @@ class Migration implements CqrsInterface
 
     public function handler(): mixed
     {
-        $connection = Emailer::i()->getDb();
+        $emailer = AbstractRepository::emailer();
+        $connection = $emailer->getDb();
 
-        $config = Emailer::i()->getMigrationConfig();
+        $config = $emailer->getMigrationConfig();
 
         $dependencyFactory = DependencyFactory::fromConnection($config, new ExistingConnection($connection));
 
