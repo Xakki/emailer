@@ -7,7 +7,6 @@ namespace Xakki\Emailer;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\Migrations\Configuration\Migration\ConfigurationArray;
-use Phroute\Phroute;
 use Psr\Log\LoggerInterface;
 use Redis;
 
@@ -143,17 +142,18 @@ class Emailer
     public function dispatchRoute(string $requestMethod, string $requestUri): string
     {
         try {
-            $router = new Phroute\RouteCollector();
-            foreach ($this->config->route as $route => $handler) {
-                $route = explode(':', $route);
-                $httpMethod = array_shift($route);
-                $route = implode(':', $route);
-                $router->addRoute($httpMethod, $route, $handler);
+            $path = parse_url($requestUri, PHP_URL_PATH) ?: '/';
+            $router = new Helper\Router($this->config->route);
+            [$handler, $vars] = $router->match($requestMethod, $path);
+
+            // Lazily instantiate string controller handlers: [Class, method] -> [object, method].
+            if (is_array($handler) && is_string($handler[0])) {
+                $handler[0] = new $handler[0]($this);
             }
-            $dispatcher = new Phroute\Dispatcher($router->getData(), new Helper\HandlerResolverRoute($this));
-            return $dispatcher->dispatch($requestMethod, parse_url($requestUri, PHP_URL_PATH));
+            /** @var callable $handler */
+            return (string) call_user_func_array($handler, $vars);
         } catch (\Throwable $e) {
-            http_response_code(500);
+            http_response_code($e instanceof Exception\Exception ? $e->httpCode : 500);
             $this->logger->error($e, ['category' => 'route']);
             return $e->getMessage();
         }

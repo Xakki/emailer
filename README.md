@@ -33,17 +33,8 @@ clicks and (un)subscriptions through a small set of HTTP endpoints.
 
 ## Installation
 
-Once the package is published on Packagist:
-
 ```bash
 composer require xakki/emailer
-```
-
-Until then (or to track `master`), add the repository explicitly:
-
-```bash
-composer config repositories.emailer vcs https://github.com/Xakki/emailer
-composer require xakki/emailer:dev-master
 ```
 
 Run the database migrations (against your configured connection):
