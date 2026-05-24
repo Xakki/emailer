@@ -12,7 +12,6 @@ use Redis;
 
 class Emailer
 {
-    protected static self $instances;
     protected ConfigService $config;
     protected LoggerInterface $logger;
     protected Connection $db;
@@ -20,29 +19,17 @@ class Emailer
 
     public function __construct(ConfigService $config, LoggerInterface $logger)
     {
-        static::$instances = $this;
         $this->config = $config;
         $this->logger = $logger;
-    }
-
-    /**
-     * Global access for Emailer object
-     *
-     * @return self
-     * @throws Exception\Exception
-     */
-    public static function i(): self
-    {
-        // @phpstan-ignore-next-line
-        if (!static::$instances) {
-            throw new Exception\Exception('No instance');
-        }
-        return static::$instances;
+        // Wire the static repository / CQRS layer to this instance once.
+        // Replaces the old Emailer::i() global accessor: callers that previously
+        // reached for a singleton now go through AbstractRepository::emailer().
+        Repository\AbstractRepository::setEmailer($this);
     }
 
     public function __wakeup()
     {
-        throw new Exception\Exception("Cannot unserialize a singleton.");
+        throw new Exception\Exception('Cannot unserialize an Emailer (DB/Redis handles are not serialisable).');
     }
 
     public function getLogger(): LoggerInterface

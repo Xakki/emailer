@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Xakki\Emailer\Cqrs\Domain;
 
-use Xakki\Emailer\Emailer;
+use Xakki\Emailer\Repository\AbstractRepository;
 
 class GetDomainIdByEmail
 {
@@ -21,7 +21,7 @@ class GetDomainIdByEmail
         $pos = strpos($this->email, '@');
         $domain = substr($this->email, $pos + 1);
 
-        $mem = Emailer::i()->getCache();
+        $mem = AbstractRepository::emailer()->getCache();
         $key = self::MEM_KEY_ID . ':' . $domain;
         $val = $mem->get($key);
         if (!$val) {

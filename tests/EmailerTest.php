@@ -23,7 +23,9 @@ class EmailerTest extends TestCase
         self::assertSame($logger, $emailer->getLogger());
         self::assertSame('top', $config->secret_key);
         self::assertInstanceOf(Mail::class, $emailer->getNewMail());
-        self::assertSame($emailer, Emailer::i());
+        // The constructor wires the static repository layer; the registered
+        // instance must match the one we just built.
+        self::assertSame($emailer, \Xakki\Emailer\Repository\AbstractRepository::emailer());
     }
 
     public function testGetDbRequiresPassword(): void
@@ -61,6 +63,22 @@ class EmailerTest extends TestCase
         $out = $emailer->dispatchRoute('GET', '/route/that/does/not/exist');
         // Phroute throws → caught → message string returned.
         self::assertNotSame('', $out);
+    }
+
+    public function testEmailerAccessorThrowsWhenNothingRegistered(): void
+    {
+        // Static state leaks across tests; clear it so the throw path is observable.
+        $prop = new \ReflectionProperty(\Xakki\Emailer\Repository\AbstractRepository::class, 'emailer');
+        $previous = $prop->getValue();
+        $prop->setValue(null, null);
+        try {
+            $this->expectException(Exception::class);
+            $this->expectExceptionMessage('no Emailer registered');
+            \Xakki\Emailer\Repository\AbstractRepository::emailer();
+        } finally {
+            // Restore so the rest of the suite keeps working regardless of test order.
+            $prop->setValue(null, $previous);
+        }
     }
 
     public function testGetMigrationConfig(): void

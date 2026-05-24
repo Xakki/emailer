@@ -6,9 +6,9 @@ namespace Xakki\Emailer\Cqrs\Auth;
 
 use Xakki\Emailer\Cqrs\AbstractCqrs;
 use Xakki\Emailer\Cqrs\CqrsInterface;
-use Xakki\Emailer\Emailer;
 use Xakki\Emailer\Exception\AccessFail;
 use Xakki\Emailer\Exception\Validations;
+use Xakki\Emailer\Repository\AbstractRepository;
 
 class GetAuthToken extends AbstractCqrs implements CqrsInterface
 {
@@ -47,7 +47,7 @@ class GetAuthToken extends AbstractCqrs implements CqrsInterface
     {
         // TODO
         if ($this->login === 'admin' && $this->pass === 'todo') {
-            $mem = Emailer::i()->getCache();
+            $mem = AbstractRepository::emailer()->getCache();
             $key = self::MEM_KEY . ':' . $this->login;
             $token = md5($this->login . time() . $this->pass . microtime());
             $hasOldAuth = $mem->get($key);

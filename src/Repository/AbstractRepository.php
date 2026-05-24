@@ -12,6 +12,7 @@ use Doctrine\DBAL\Types\Type;
 use Generator;
 use Xakki\Emailer\Emailer;
 use Xakki\Emailer\Exception;
+use Xakki\Emailer\Repository\Expression\NullExpression;
 
 abstract class AbstractRepository
 {
@@ -20,11 +21,46 @@ abstract class AbstractRepository
     /** @var array<string,mixed> */
     protected array $data = [];
 
+    /**
+     * Active Emailer instance, wired once by Emailer::__construct().
+     * Static so the AR-style static repository API can still reach DB / logger
+     * without changing every call site; explicit so callers control the
+     * lifecycle (tests overwrite it in setUp, no auto-magic singleton).
+     */
+    private static ?Emailer $emailer = null;
+
+    /**
+     * Register the active Emailer for the static repository / CQRS layer.
+     * Emailer::__construct() calls this; tests can call it directly.
+     */
+    public static function setEmailer(Emailer $emailer): void
+    {
+        self::$emailer = $emailer;
+    }
+
+    /**
+     * Return the active Emailer or throw if the layer was never wired.
+     * Public so CQRS handlers that legitimately need the same context
+     * (cache / migrations) can reuse it without re-introducing a global accessor.
+     *
+     * @throws Exception\Exception
+     */
+    public static function emailer(): Emailer
+    {
+        if (self::$emailer === null) {
+            throw new Exception\Exception(
+                'AbstractRepository: no Emailer registered (construct an Emailer first, '
+                . 'or call AbstractRepository::setEmailer() in tests).'
+            );
+        }
+        return self::$emailer;
+    }
+
     abstract protected static function tableName(): string;
 
     protected static function getDb(): Connection
     {
-        return Emailer::i()->getDb();
+        return self::emailer()->getDb();
     }
 
     /**
@@ -70,7 +106,7 @@ abstract class AbstractRepository
             if ($val === null) {
                 continue;
             }
-            if ($val instanceof expresion\NullExpresion) {
+            if ($val instanceof NullExpression) {
                 $val = null;
             }
             $values[$name] = $val;
@@ -81,7 +117,7 @@ abstract class AbstractRepository
             $id = $values[static::pkName()] ?? (int)static::getDb()->lastInsertId();
         }
 
-        Emailer::i()->getLogger()->debug('INSERT INTO `' . static::tableName() . '` => #' . $id . '.', ['insert', 'data' => $values]);
+        self::emailer()->getLogger()->debug('INSERT INTO `' . static::tableName() . '` => #' . $id . '.', ['insert', 'data' => $values]);
 
         if (!$id) {
             throw new Exception\Exception('Cant insert data');
@@ -106,7 +142,7 @@ abstract class AbstractRepository
             if ($val === null) {
                 continue;
             }
-            if ($val instanceof expresion\NullExpresion) {
+            if ($val instanceof NullExpression) {
                 $val = null;
             }
             $values[$name] = $val;
@@ -114,7 +150,7 @@ abstract class AbstractRepository
 
         $cnt = (int) static::getDb()->update(static::tableName(), $values, [static::pkName() => $id], $types);
 
-        Emailer::i()->getLogger()->debug('UPDATE `' . static::tableName() . '` => affected rows ' . $cnt . '.', ['update', 'data' => $values]);
+        self::emailer()->getLogger()->debug('UPDATE `' . static::tableName() . '` => affected rows ' . $cnt . '.', ['update', 'data' => $values]);
 
         return $cnt;
     }
@@ -130,7 +166,7 @@ abstract class AbstractRepository
     {
         $cnt = (int) static::getDb()->update(static::tableName(), $data, $criteria, $types);
 
-        Emailer::i()->getLogger()->debug(
+        self::emailer()->getLogger()->debug(
             'UPDATE `' . static::tableName() . '` => affected rows ' . $cnt . '.',
             ['update', 'data' => $data, 'criteria' => $criteria]
         );
@@ -197,7 +233,7 @@ abstract class AbstractRepository
             $q .= ' FOR UPDATE';
         }
 
-        Emailer::i()->getLogger()->debug($q, ['query']);
+        self::emailer()->getLogger()->debug($q, ['query']);
 
         $row = self::getDb()->fetchAssociative($q, $query->getParameters(), $query->getParameterTypes());
         if ($row) {
@@ -263,7 +299,7 @@ abstract class AbstractRepository
      */
     public static function getModelsByQuery(QueryBuilder $query): Generator
     {
-        Emailer::i()->getLogger()->debug($query->getSQL(), ['query']);
+        self::emailer()->getLogger()->debug($query->getSQL(), ['query']);
         $result = $query->executeQuery();
         while ($row = $result->fetchAssociative()) {
             yield static::validate($row);
@@ -304,7 +340,7 @@ abstract class AbstractRepository
             $query->andWhere($k . '=:' . $k);
             $query->setParameter($k, $val);
         }
-        Emailer::i()->getLogger()->debug($query->getSQL(), ['delete']);
+        self::emailer()->getLogger()->debug($query->getSQL(), ['delete']);
         // DBAL 4: write statements must go through executeStatement(), not executeQuery().
         return (int) $query->executeStatement();
     }
