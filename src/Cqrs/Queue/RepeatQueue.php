@@ -9,13 +9,16 @@ use Xakki\Emailer\Emailer;
 use Xakki\Emailer\Exception\DataNotFound;
 use Xakki\Emailer\Model\Queue;
 
-class ExecuteQueue extends AbstractQueue
+class RepeatQueue extends AbstractQueue
 {
     public function __construct(Emailer $emailer)
     {
         $this->emailer = $emailer;
         try {
-            $this->queue = Queue::findOne(['status' => Queue::QUEUE_STATUS_NEW], true);
+            $this->queue = Queue::findOne(
+                ['status' => array_keys(Queue::REPEATABLE_STATUS)],
+                true,
+            );
         } catch (DataNotFound $e) {
             $e->httpCode = 0;
             throw $e;

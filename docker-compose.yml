@@ -1,9 +1,10 @@
-version: "3.5"
+
 services:
     php:
         build:
             context: docker/${CFG_PHP:-php}
             dockerfile: Dockerfile
+        init: true
         container_name: emailer-php
         working_dir: /app
         volumes:
@@ -31,6 +32,7 @@ services:
         image: mariadb:10.5
         container_name: emailer-mariadb
         working_dir: /backup
+        init: true
         volumes:
             - mydb:/var/lib/mysql
             - ./docker/backup_db:/backup
@@ -51,6 +53,7 @@ services:
         image: nginx:latest
         container_name: emailer-nginx
         working_dir: /app
+        init: true
         volumes:
             - ./public:/app
             - ./docker/${CFG_NGINX:-nginx}/default.conf:/etc/nginx/conf.d/default.conf
@@ -73,6 +76,7 @@ services:
         image: redis:alpine
         container_name: emailer-redis
         restart: "on-failure"
+        init: true
         networks:
             - default
 

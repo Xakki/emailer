@@ -39,6 +39,13 @@ class Queue extends AbstractModel
         self::QUEUE_STATUS_TEMP_ERROR => 'temporary error',
     ];
 
+    public const array REPEATABLE_STATUS = [
+        self::QUEUE_STATUS_QUOTA => 1,
+        self::QUEUE_STATUS_SPAM => 1,
+        self::QUEUE_STATUS_ERROR => 1,
+        self::QUEUE_STATUS_TEMP_ERROR => 1,
+    ];
+
     public int $id;
     public string $created;
     public ?string $sended;
@@ -299,13 +306,7 @@ class Queue extends AbstractModel
 
     public function isStatusPossibleRepeat(): bool
     {
-        $list = [
-            self::QUEUE_STATUS_QUOTA => 1,
-            self::QUEUE_STATUS_SPAM => 1,
-            self::QUEUE_STATUS_ERROR => 1,
-            self::QUEUE_STATUS_TEMP_ERROR => 1,
-        ];
-        return isset($list[$this->status]);
+        return isset(self::REPEATABLE_STATUS[$this->status]);
     }
 
     /**
