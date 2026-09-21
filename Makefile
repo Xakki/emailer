@@ -57,8 +57,13 @@ phpstan:
 psalm:
 	$(composer) psalm
 
+## Throwaway swagger-php container (writes src/swagger.json): same CPU/memory
+## caps (CI_CPUS / CI_MEMORY) and invoking-user run as the test-ci runner. The
+## image's /docker-entrypoint.sh is root-only (0711), so call openapi directly.
 swagger-generate:
-	docker run -v "${PWD}/src":/app -it tico/swagger-php /app/Controller/Api --output swagger.json
+	$(docker) run --rm --cpus $(CI_CPUS) --memory $(CI_MEMORY) --user "$$(id -u):$$(id -g)" \
+		--entrypoint /tmp/vendor/bin/openapi -v "$(CURDIR)/src":/app tico/swagger-php \
+		/app/Controller/Api --output swagger.json
 
 ## https://github.com/swagger-api/swagger-ui/blob/master/docs/usage/installation.md
 swagger-ui:
@@ -93,8 +98,14 @@ migrations-status:
 ## a throwaway container. No `emailer-php`/`emailer-mariadb` service needed —
 ## the suite is unit tests + SQLite in-memory integration tests only. Use this
 ## instead of `phpunit` (which needs the long-lived docker-compose stack up).
+## Build steps are capped via BuildKit's `--resource` (sets the RUN containers'
+## cgroup memory.max / cpu.max; needs a buildx that has the flag). cpu-quota is
+## in µs per 100 ms period: 200000 = 2 CPUs.
+CI_BUILD_CPU_QUOTA ?= 200000
+CI_BUILD_MEMORY ?= $(CI_MEMORY)
 test-ci-build:
-	$(docker) build -f docker/ci/Dockerfile --build-arg PHP_VERSION=8.5 -t emailer-test:8.5 .
+	$(docker) build --resource memory=$(CI_BUILD_MEMORY) --resource cpu-quota=$(CI_BUILD_CPU_QUOTA) \
+		-f docker/ci/Dockerfile --build-arg PHP_VERSION=8.5 -t emailer-test:8.5 .
 
 ## Throwaway CI container: CPU/memory capped (override CI_CPUS / CI_MEMORY) and
 ## run as the invoking user so vendor/ and the caches stay owned by you; HOME
