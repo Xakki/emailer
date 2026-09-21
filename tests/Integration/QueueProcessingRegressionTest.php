@@ -405,6 +405,42 @@ class QueueProcessingRegressionTest extends IntegrationCase
     }
 
     /**
+     * A row no transport can be resolved for (its project has none) routes to
+     * NULL in SQL. While another transport is paused it must stay selectable
+     * (the exclusion reads it as 0 — NULL NOT IN (...) would drop it): it is
+     * claimed and fails terminally as it would without a pause.
+     */
+    #[DataProvider('runActions')]
+    public function testUnroutableRowIsStillSelectedWhileAnotherTransportIsPaused(string $action): void
+    {
+        $down = $this->createProjectWithTransports('Down', ['example.com' => 'smtpAuthFailCounted']);
+        $orphan = $this->createProjectWithTransports('Orphan', []);
+        [$status, $retry, $retryAt] = $action === 'send'
+            ? [Model\Queue::QUEUE_STATUS_NEW, 0, null]
+            : [Model\Queue::QUEUE_STATUS_TEMP_ERROR, 1, '2000-01-01 00:00:00'];
+        $pausedId = $this->enqueue($down, 'a1@example.com', $status, $retry, $retryAt);
+        $keptId = $this->enqueue($down, 'a2@example.com', $status, $retry, $retryAt);
+        $orphanId = $this->enqueue($orphan, 'c1@nowhere.test', $status, $retry, $retryAt);
+
+        $out = (new Console($this->emailer))->{$action}(10);
+
+        self::assertSame("Statuses: array (\n  'temporary error' => 1,\n  'default error' => 1,\n)", $out);
+        self::assertSame(1, QueueRegressionTransport::$deliveries, 'one AUTH attempt, then the transport is paused');
+        $this->assertQueueState($pausedId, Model\Queue::QUEUE_STATUS_TEMP_ERROR, $retry + 1);
+        $this->assertQueueState($keptId, $status, $retry);
+        $this->assertQueueState($orphanId, Model\Queue::QUEUE_STATUS_ERROR, $retry);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function runActions(): iterable
+    {
+        yield 'send' => ['send'];
+        yield 'reSend' => ['reSend'];
+    }
+
+    /**
      * @return iterable<string, array{string, string, int}>
      */
     public static function pausedBacklogs(): iterable
