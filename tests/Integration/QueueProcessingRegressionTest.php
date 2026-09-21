@@ -451,6 +451,26 @@ class QueueProcessingRegressionTest extends IntegrationCase
         self::assertSame('2026-01-01 00:15:00', $lines[1]['context']['retry_at']);
     }
 
+    /**
+     * Deploying the code before the queue.retry_at migration is unsupported
+     * (README "Upgrading"): a temporary failure cannot be scheduled, so it must
+     * fail loudly — terminal ERROR, retry unchanged, the schema error in
+     * last_error — and never count as transient (a missing column does not heal
+     * by retrying). Intentional contract, pinned here.
+     */
+    public function testTemporaryFailureWithoutTheRetryAtMigrationIsTerminalAndDiagnosable(): void
+    {
+        $queue = $this->createQueue(Model\Queue::QUEUE_STATUS_NEW, 0, Model\Queue::QUEUE_STATUS_TEMP_ERROR);
+        $this->db->executeStatement('ALTER TABLE queue DROP COLUMN retry_at');
+
+        self::assertSame(Model\Queue::QUEUE_STATUS_ERROR, (new ExecuteQueue($this->emailer))->handler());
+        $this->assertQueueState($queue->id, Model\Queue::QUEUE_STATUS_ERROR, 0);
+        self::assertStringContainsString(
+            'retry_at',
+            (string) Repository\QueueData::findOne(['id' => $queue->id])['last_error'],
+        );
+    }
+
     #[DataProvider('terminalFailures')]
     public function testThrowableFromQueueProcessingBecomesTerminalErrorWithoutRetryChange(string $failure): void
     {
