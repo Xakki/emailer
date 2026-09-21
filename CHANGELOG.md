@@ -52,7 +52,9 @@ follow [Semantic Versioning](https://semver.org/).
   - When a relay transport's SMTP connect, TLS or AUTH step fails, the transport
     is paused for the rest of the run: its other messages are left untouched,
     other transports continue. Rejections after login (MAIL FROM / RCPT / DATA)
-    never pause it, even when their text mentions authentication. A paused
+    never pause it, even when their text mentions authentication. A custom
+    transport opts in by setting the protected `$connectionFailure`
+    (`AbstractTransport::isConnectionFailure()`). A paused
     transport's messages are excluded by the selection query itself, so its
     backlog adds no query per message to the run.
   - Transport routing ties (several transports of a project with the same rank)
