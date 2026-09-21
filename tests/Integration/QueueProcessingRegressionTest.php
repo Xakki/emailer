@@ -846,9 +846,8 @@ final class QueueRegressionConnection extends Connection
     }
 
     /**
-     * SQLite does not support MySQL's IF function or FOR UPDATE. This keeps the
-     * queue regression tests on the production repository path without a live
-     * MySQL database.
+     * SQLite does not support FOR UPDATE. This keeps the queue regression
+     * tests on the production repository path without a live MySQL database.
      *
      * @param list<mixed>|array<string, mixed> $params
      * @param array<int<0, max>|string, ArrayParameterType|ParameterType|Type|string> $types
@@ -860,7 +859,6 @@ final class QueueRegressionConnection extends Connection
             $this->forUpdateSelects++;
         }
         $query = str_replace(' FOR UPDATE', '', $query);
-        $query = str_replace('IF(', 'IIF(', $query);
         if ($this->ignoreTransportExclusion) {
             $query = str_replace('NOT IN (:skip_transport_ids)', 'NOT IN (:skip_transport_ids) OR 1 = 1', $query);
         }
