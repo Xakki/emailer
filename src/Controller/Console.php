@@ -14,6 +14,7 @@ use Xakki\Emailer\Model\Queue;
 
 /**
  * @method send(int $repeat = 1)
+ * @method reSend(int $repeat = 1)
  * @method newDay()
  * @method migrations()
  */

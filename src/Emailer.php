@@ -62,7 +62,7 @@ class Emailer
         if (!isset($this->cache)) {
             $this->cache = new Redis();
             if (!$this->cache->connect($this->config->redis['host'], $this->config->redis['port'])) {
-                throw new Exception\Exception('Cant connect to Redis');
+                throw new Exception\CacheUnavailable('Cant connect to Redis');
             }
         }
         return $this->cache;

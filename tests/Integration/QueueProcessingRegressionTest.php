@@ -6,7 +6,11 @@ namespace Xakki\Emailer\Tests\Integration;
 
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Driver\PDO\Exception as PdoDriverException;
 use Doctrine\DBAL\DriverManager;
+use Doctrine\DBAL\Exception\ConnectionLost;
+use Doctrine\DBAL\Exception\DeadlockException;
+use Doctrine\DBAL\Exception\LockWaitTimeoutException;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Type;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -14,6 +18,7 @@ use Xakki\Emailer\Controller\Console;
 use Xakki\Emailer\Cqrs;
 use Xakki\Emailer\Cqrs\Queue\ExecuteQueue;
 use Xakki\Emailer\Cqrs\Queue\RepeatQueue;
+use Xakki\Emailer\Exception\CacheUnavailable;
 use Xakki\Emailer\Exception\DataNotFound;
 use Xakki\Emailer\Exception\Exception as EmailerException;
 use Xakki\Emailer\Exception\Validation;
@@ -290,6 +295,64 @@ class QueueProcessingRegressionTest extends IntegrationCase
         yield 'quota error, not auto-retried' => [Model\Queue::QUEUE_STATUS_QUOTA, 0, '2026-09-21 11:00:00'];
     }
 
+    /**
+     * Transient infrastructure failures that arrive as exceptions (Redis down,
+     * DB deadlock / lock wait / lost connection) get the same geometric backoff
+     * as a TEMP_ERROR delivery result instead of a terminal ERROR on attempt 1.
+     */
+    #[DataProvider('transientFailures')]
+    public function testTransientExceptionEntersBackoff(string $failure, string $message): void
+    {
+        $queue = $this->createQueue(Model\Queue::QUEUE_STATUS_NEW, 0, 0, $failure);
+        $now = new \DateTimeImmutable('2026-01-01 00:00:00');
+        ManualClock::$now = $now;
+
+        self::assertSame(Model\Queue::QUEUE_STATUS_TEMP_ERROR, (new ClockedExecuteQueue($this->emailer))->handler());
+        $this->assertQueueState($queue->id, Model\Queue::QUEUE_STATUS_TEMP_ERROR, 1);
+        $this->assertRetryAtDelta($queue->id, $now, 900);
+        self::assertStringContainsString($message, (string) Repository\QueueData::findOne(['id' => $queue->id])['last_error']);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function transientFailures(): iterable
+    {
+        yield 'Redis extension error' => ['redis', 'Connection refused'];
+        yield 'Redis connect failure (cache layer)' => ['cacheUnavailable', 'Cant connect to Redis'];
+        yield 'DB deadlock' => ['deadlock', 'Deadlock found'];
+        yield 'DB lock wait timeout' => ['lockWait', 'Lock wait timeout'];
+        yield 'DB connection lost' => ['connectionLost', 'server has gone away'];
+    }
+
+    public function testTransientExceptionOnTheLastAttemptBecomesTerminal(): void
+    {
+        $queue = $this->createQueue(Model\Queue::QUEUE_STATUS_NEW, 4, 0, 'redis');
+
+        self::assertSame(Model\Queue::QUEUE_STATUS_ERROR, (new ExecuteQueue($this->emailer))->handler());
+        $this->assertQueueState($queue->id, Model\Queue::QUEUE_STATUS_ERROR, 5);
+    }
+
+    /**
+     * The DB is gone for writes too: the outcome cannot be stored, the row
+     * stays RUN (claimed), and the original failure — not the secondary write
+     * error — is what surfaces and stops the tick.
+     */
+    public function testTransientExceptionWhoseOutcomeCannotBeStoredSurfacesTheOriginalError(): void
+    {
+        $queue = $this->createQueue(Model\Queue::QUEUE_STATUS_NEW, 0, 0, 'connectionLost');
+        $this->db->executeStatement(
+            'CREATE TRIGGER db_gone BEFORE UPDATE OF status ON queue WHEN NEW.status IN (-20, -21) '
+            . "BEGIN SELECT RAISE(ABORT, 'secondary write failure'); END"
+        );
+
+        $out = (new Console($this->emailer))->send();
+
+        self::assertStringContainsString('server has gone away', $out);
+        self::assertStringNotContainsString('secondary write failure', $out);
+        $this->assertQueueState($queue->id, Model\Queue::QUEUE_STATUS_RUN, 0);
+    }
+
     #[DataProvider('terminalFailures')]
     public function testThrowableFromQueueProcessingBecomesTerminalErrorWithoutRetryChange(string $failure): void
     {
@@ -302,7 +365,8 @@ class QueueProcessingRegressionTest extends IntegrationCase
     /**
      * NOT the SMTP-auth-failure case: this is a Validation exception thrown by
      * (escaping) the transport, caught by AbstractQueue's outer catch(\Throwable)
-     * safety net, which is always terminal by design. Real SMTP auth failures
+     * safety net, which is terminal for everything outside its transient
+     * allowlist (see transientFailures()). Real SMTP auth failures
      * are caught inside Smtp::send() and classified by getSmtpErrorStatus() —
      * see SmtpSendTest and testSmtpAuthenticationFailureEntersBackoffAndWalksToTerminal
      * above, which now go through backoff instead.
@@ -507,12 +571,22 @@ final class QueueRegressionTransport extends AbstractTransport
             // QUEUE_STATUS_TEMP_ERROR for SMTP auth failures.
             'smtpAuthentication' => $this->getSmtpErrorStatus('SMTP Error: Could not authenticate.'),
             'countDelivery' => $this->deliver(),
+            'redis' => throw new \RedisException('Connection refused'),
+            'cacheUnavailable' => throw new CacheUnavailable('Cant connect to Redis'),
+            'deadlock' => throw new DeadlockException(self::driverError('Deadlock found when trying to get lock'), null),
+            'lockWait' => throw new LockWaitTimeoutException(self::driverError('Lock wait timeout exceeded'), null),
+            'connectionLost' => throw new ConnectionLost(self::driverError('MySQL server has gone away'), null),
             default => $this->result,
         };
     }
 
     public function validate(): void
     {
+    }
+
+    private static function driverError(string $message): PdoDriverException
+    {
+        return PdoDriverException::new(new \PDOException($message));
     }
 
     private function deliver(): int

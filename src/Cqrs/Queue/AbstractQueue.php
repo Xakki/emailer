@@ -4,13 +4,28 @@ declare(strict_types=1);
 
 namespace Xakki\Emailer\Cqrs\Queue;
 
+use Doctrine\DBAL\Exception as DBALException;
 use Xakki\Emailer\Cqrs;
 use Xakki\Emailer\Emailer;
+use Xakki\Emailer\Exception;
 use Xakki\Emailer\Helper\RetrySchedule;
 use Xakki\Emailer\Model\Queue;
 
 abstract class AbstractQueue
 {
+    /**
+     * Exceptions retried with the TEMP_ERROR backoff instead of failing the row
+     * terminally: Redis (ext-redis error, or Emailer::getCache() connect failure)
+     * and transient DBAL errors (deadlock / lock wait timeout via
+     * RetryableException; connection refused / lost via ConnectionException).
+     */
+    private const TRANSIENT_EXCEPTIONS = [
+        \RedisException::class,
+        Exception\CacheUnavailable::class,
+        DBALException\RetryableException::class,
+        DBALException\ConnectionException::class,
+    ];
+
     protected Queue $queue;
     protected Emailer $emailer;
 
@@ -79,30 +94,7 @@ abstract class AbstractQueue
                     $transportModel->incCntDay();
                 });
             } elseif ($status === Queue::QUEUE_STATUS_TEMP_ERROR) {
-                $this->writeResult(function () use ($transport): void {
-                    $this->queue->retry++;
-                    $retryConfig = $this->emailer->getConfig()->retry;
-                    $delay = RetrySchedule::delaySeconds(
-                        $this->queue->retry,
-                        $retryConfig['max_attempts'],
-                        $retryConfig['first_delay'],
-                        $retryConfig['max_delay'],
-                    );
-                    if ($delay === null) {
-                        // Attempts exhausted: terminal, and deliberately NOT re-armed —
-                        // must never loop back into QUEUE_STATUS_TEMP_ERROR (that would
-                        // just rebuild the stuck backlog on a slower clock).
-                        $this->queue->status = Queue::QUEUE_STATUS_ERROR;
-                        $this->queue->update(['status', 'retry']);
-                    } else {
-                        $this->queue->status = Queue::QUEUE_STATUS_TEMP_ERROR;
-                        $this->queue->retry_at = $this->now()
-                            ->modify('+' . $delay . ' seconds')
-                            ->format('Y-m-d H:i:s');
-                        $this->queue->update(['status', 'retry', 'retry_at']);
-                    }
-                    $this->queue->updateLastError($transport->getError());
-                });
+                $this->writeResult(fn() => $this->scheduleRetry($transport->getError()));
             } else {
                 $this->writeResult(function () use ($status, $transport): void {
                     $this->queue->status = $status;
@@ -125,6 +117,8 @@ abstract class AbstractQueue
                         $this->queue->status = Queue::QUEUE_STATUS_SUCCESS;
                         $this->queue->update(['sended', 'status']);
                     });
+                } elseif (self::isTransient($e)) {
+                    $this->writeResult(fn() => $this->scheduleRetry($e->getMessage()));
                 } else {
                     $this->writeResult(function () use ($e): void {
                         $this->queue->status = Queue::QUEUE_STATUS_ERROR;
@@ -140,6 +134,51 @@ abstract class AbstractQueue
             }
         }
         return $this->queue->status;
+    }
+
+    /**
+     * Allowlist: only failures of the infrastructure around the delivery that
+     * are expected to heal on their own. Everything else (Validation, rendering,
+     * configuration, unknown errors) stays terminal.
+     */
+    private static function isTransient(\Throwable $e): bool
+    {
+        foreach (self::TRANSIENT_EXCEPTIONS as $class) {
+            if ($e instanceof $class) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Geometric backoff: count the failed attempt and schedule the next one,
+     * or go terminal when the attempts are exhausted.
+     */
+    private function scheduleRetry(string $error): void
+    {
+        $this->queue->retry++;
+        $retryConfig = $this->emailer->getConfig()->retry;
+        $delay = RetrySchedule::delaySeconds(
+            $this->queue->retry,
+            $retryConfig['max_attempts'],
+            $retryConfig['first_delay'],
+            $retryConfig['max_delay'],
+        );
+        if ($delay === null) {
+            // Attempts exhausted: terminal, and deliberately NOT re-armed —
+            // must never loop back into QUEUE_STATUS_TEMP_ERROR (that would
+            // just rebuild the stuck backlog on a slower clock).
+            $this->queue->status = Queue::QUEUE_STATUS_ERROR;
+            $this->queue->update(['status', 'retry']);
+        } else {
+            $this->queue->status = Queue::QUEUE_STATUS_TEMP_ERROR;
+            $this->queue->retry_at = $this->now()
+                ->modify('+' . $delay . ' seconds')
+                ->format('Y-m-d H:i:s');
+            $this->queue->update(['status', 'retry', 'retry_at']);
+        }
+        $this->queue->updateLastError($error);
     }
 
     /**
