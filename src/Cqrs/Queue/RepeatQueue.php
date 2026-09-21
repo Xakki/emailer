@@ -11,7 +11,7 @@ use Xakki\Emailer\Repository;
 
 class RepeatQueue extends AbstractQueue
 {
-    public function __construct(Emailer $emailer, array $skipIds = [], array $skipProjectIds = [])
+    public function __construct(Emailer $emailer, array $skipIds = [], array $skipTransportIds = [])
     {
         $this->emailer = $emailer;
         // Repository\Queue::findOneForRepeat() (not Model\Queue::findOne(), which
@@ -23,7 +23,7 @@ class RepeatQueue extends AbstractQueue
             $this->now(),
             true,
             $skipIds,
-            $skipProjectIds,
+            $skipTransportIds,
         );
         if (!$row) {
             $e = new DataNotFound('Not found data');

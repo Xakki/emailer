@@ -52,7 +52,11 @@ follow [Semantic Versioning](https://semver.org/).
   - When a relay transport's SMTP connect, TLS or AUTH step fails, the transport
     is paused for the rest of the run: its other messages are left untouched,
     other transports continue. Rejections after login (MAIL FROM / RCPT / DATA)
-    never pause it, even when their text mentions authentication.
+    never pause it, even when their text mentions authentication. A paused
+    transport's messages are excluded by the selection query itself, so its
+    backlog adds no query per message to the run.
+  - Transport routing ties (several transports of a project with the same rank)
+    now go to the lowest transport id; the order was unspecified before.
   - Each message is claimed (`RUN`) in a short transaction and sent outside any
     transaction (no DB lock held during the SMTP dialogue). Delivery is
     **at most once**: a crash or a failed result write leaves the row in `RUN`

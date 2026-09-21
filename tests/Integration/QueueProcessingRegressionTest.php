@@ -336,6 +336,88 @@ class QueueProcessingRegressionTest extends IntegrationCase
         yield 'same project, other transport' => [true];
     }
 
+    /**
+     * A paused transport's backlog is excluded by the selection SQL itself: it
+     * costs no extra FOR UPDATE selection per row (the run used to lock, skip
+     * and commit every one of them before reaching a live row). Two routings:
+     * the paused transport bound to the recipient domain, and the paused one as
+     * the project default (domain_id NULL, lowest id) next to a domain-bound
+     * live one — the tie at rank 0 must resolve exactly as Transport::find().
+     */
+    #[DataProvider('pausedBacklogs')]
+    public function testPausedTransportBacklogCostsNoSelectionPerRow(string $action, string $pausedRoute, int $backlog): void
+    {
+        $campaign = $this->createProjectWithTransports('Down', [
+            $pausedRoute => 'smtpAuthFailCounted',
+            'other.test' => 'countDelivery',
+        ]);
+        [$status, $retry, $retryAt] = $action === 'send'
+            ? [Model\Queue::QUEUE_STATUS_NEW, 0, null]
+            : [Model\Queue::QUEUE_STATUS_TEMP_ERROR, 1, '2000-01-01 00:00:00'];
+        for ($i = 0; $i < $backlog; $i++) {
+            $this->enqueue($campaign, 'a' . $i . '@example.com', $status, $retry, $retryAt);
+        }
+        $liveId = $this->enqueue($campaign, 'b1@other.test', $status, $retry, $retryAt);
+        $connection = $this->getQueueRegressionConnection();
+        $connection->forUpdateSelects = 0;
+
+        $out = (new Console($this->emailer))->{$action}(2);
+
+        self::assertSame(2, $connection->forUpdateSelects, 'one FOR UPDATE selection per processed row; ' . $out);
+        self::assertSame("Statuses: array (\n  'temporary error' => 1,\n  'success' => 1,\n)", $out);
+        self::assertSame(2, QueueRegressionTransport::$deliveries, 'one AUTH attempt + one delivery');
+        $this->assertQueueState($liveId, Model\Queue::QUEUE_STATUS_SUCCESS, $retry);
+        $kept = $retryAt === null
+            ? $this->db->fetchOne('SELECT COUNT(*) FROM queue WHERE status = ? AND retry = ? AND retry_at IS NULL', [$status, $retry])
+            : $this->db->fetchOne('SELECT COUNT(*) FROM queue WHERE status = ? AND retry = ? AND retry_at = ?', [$status, $retry, $retryAt]);
+        self::assertSame($backlog - 1, (int) $kept, 'the rest of the paused backlog keeps its state');
+    }
+
+    /**
+     * Backstop: if the SQL routing ever disagreed with PHP's (the exclusion is
+     * disabled here to simulate it), each row still resolving to the paused
+     * transport is released unchanged and skipped by id — the run terminates.
+     */
+    public function testRowsTheSelectionFailsToExcludeAreSkippedAndTheRunTerminates(): void
+    {
+        $campaign = $this->createProjectWithTransports('Down', [
+            'example.com' => 'smtpAuthFailCounted',
+            'other.test' => 'countDelivery',
+        ]);
+        $pausedIds = [];
+        foreach (['a1', 'a2', 'a3'] as $user) {
+            $pausedIds[] = $this->enqueue($campaign, $user . '@example.com', Model\Queue::QUEUE_STATUS_NEW);
+        }
+        $liveId = $this->enqueue($campaign, 'b1@other.test', Model\Queue::QUEUE_STATUS_NEW);
+        $connection = $this->getQueueRegressionConnection();
+        $connection->ignoreTransportExclusion = true;
+        $connection->forUpdateSelects = 0;
+
+        $out = (new Console($this->emailer))->send(10);
+
+        self::assertSame("Statuses: array (\n  'temporary error' => 1,\n  'success' => 1,\n)", $out);
+        self::assertSame(5, $connection->forUpdateSelects, 'a1, a2 + a3 skipped, b1, then empty');
+        $this->assertQueueState($pausedIds[0], Model\Queue::QUEUE_STATUS_TEMP_ERROR, 1);
+        foreach ([$pausedIds[1], $pausedIds[2]] as $id) {
+            $this->assertQueueState($id, Model\Queue::QUEUE_STATUS_NEW, 0);
+        }
+        $this->assertQueueState($liveId, Model\Queue::QUEUE_STATUS_SUCCESS, 0);
+    }
+
+    /**
+     * @return iterable<string, array{string, string, int}>
+     */
+    public static function pausedBacklogs(): iterable
+    {
+        foreach (['send', 'reSend'] as $action) {
+            foreach (['domain' => 'example.com', 'default' => '*'] as $route => $domain) {
+                foreach ([20, 200] as $backlog) {
+                    yield $action . ', ' . $route . ' transport paused, ' . $backlog . ' rows' => [$action, $domain, $backlog];
+                }
+            }
+        }
+    }
+
     #[DataProvider('backlogRowsThatMustNeverBeAutoRetried')]
     public function testRepeatQueueNeverSelectsLegacyOrNotYetDueRows(
         int $status,
@@ -576,7 +658,8 @@ class QueueProcessingRegressionTest extends IntegrationCase
     }
 
     /**
-     * One project with one domain-routed transport per entry (domain => failure mode).
+     * One project with one domain-routed transport per entry (domain => failure
+     * mode), in order; '*' adds a transport bound to no domain.
      *
      * @param array<string, string> $transports
      */
@@ -600,7 +683,7 @@ class QueueProcessingRegressionTest extends IntegrationCase
             Repository\Transport::insert([
                 'params' => (string) $transport,
                 'project_id' => $project->id,
-                'domain_id' => $this->domainId($domain),
+                'domain_id' => $domain === '*' ? null : $this->domainId($domain),
                 'limit_day' => 0,
                 'cnt_day' => 0,
             ]);
@@ -711,6 +794,8 @@ final class QueueRegressionConnection extends Connection
 {
     public int $beginTransactionCalls = 0;
     public int $rollBackCalls = 0;
+    public int $forUpdateSelects = 0;
+    public bool $ignoreTransportExclusion = false;
 
     public function beginTransaction(): void
     {
@@ -735,8 +820,14 @@ final class QueueRegressionConnection extends Connection
      */
     public function fetchAssociative(string $query, array $params = [], array $types = []): array|false
     {
+        if (str_contains($query, ' FOR UPDATE')) {
+            $this->forUpdateSelects++;
+        }
         $query = str_replace(' FOR UPDATE', '', $query);
         $query = str_replace('IF(', 'IIF(', $query);
+        if ($this->ignoreTransportExclusion) {
+            $query = str_replace('NOT IN (:skip_transport_ids)', 'NOT IN (:skip_transport_ids) OR 1 = 1', $query);
+        }
         return parent::fetchAssociative($query, $params, $types);
     }
 }

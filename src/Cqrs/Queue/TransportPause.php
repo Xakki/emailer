@@ -20,8 +20,6 @@ final class TransportPause
     private array $pausedTransportIds = [];
     /** @var list<int> */
     private array $skipIds = [];
-    /** @var list<int> */
-    private array $skipProjectIds = [];
 
     public function isActive(): bool
     {
@@ -36,17 +34,12 @@ final class TransportPause
     public function pause(Model\Transport $transport): void
     {
         $this->pausedTransportIds[$transport->id] = true;
-        // A row only ever routes to a transport of its own project, so once all
-        // of a project's transports are paused, exclude the whole project in SQL
-        // instead of selecting and skipping its backlog row by row.
-        foreach (Model\Transport::findAll(['project_id' => $transport->project_id]) as $sibling) {
-            if (!$this->isPaused($sibling)) {
-                return;
-            }
-        }
-        $this->skipProjectIds[] = $transport->project_id;
     }
 
+    /**
+     * Backstop for a row the selection SQL routed differently from PHP
+     * (Repository\Transport::routedIdSubquery() vs find()): set it aside by id.
+     */
     public function skip(Model\Queue $queue): void
     {
         // Selection must exclude skipped rows; seeing one again would mean the
@@ -66,10 +59,13 @@ final class TransportPause
     }
 
     /**
+     * Excluded in the selection SQL itself (Repository\Queue::skip()), so a
+     * paused transport's backlog costs no query per row.
+     *
      * @return list<int>
      */
-    public function skipProjectIds(): array
+    public function pausedTransportIds(): array
     {
-        return $this->skipProjectIds;
+        return array_keys($this->pausedTransportIds);
     }
 }

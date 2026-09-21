@@ -25,7 +25,7 @@ class Queue extends AbstractRepository
      * rather than an implicit consequence a future edit could lose.
      *
      * @param list<int> $skipIds
-     * @param list<int> $skipProjectIds
+     * @param list<int> $skipTransportIds
      * @return array<string, mixed>
      * @throws \Xakki\Emailer\Exception\Exception
      * @throws \Doctrine\DBAL\Exception
@@ -35,7 +35,7 @@ class Queue extends AbstractRepository
         \DateTimeInterface $now,
         bool $selectForUpdate = false,
         array $skipIds = [],
-        array $skipProjectIds = [],
+        array $skipTransportIds = [],
     ): array {
         $query = static::createQueryBuilder();
         $query->andWhere('status = :status')
@@ -43,17 +43,17 @@ class Queue extends AbstractRepository
             ->andWhere('retry_at IS NOT NULL')
             ->andWhere('retry_at <= :now')
             ->setParameter('now', $now->format('Y-m-d H:i:s'));
-        static::skip($query, $skipIds, $skipProjectIds);
+        static::skip($query, $skipIds, $skipTransportIds);
 
         return static::getRowByQuery($query, $selectForUpdate);
     }
 
     /**
-     * Next row with $status, minus the rows/projects the current run has set
-     * aside (see Cqrs\Queue\TransportPause).
+     * Next row with $status, minus the rows / transports the current run has
+     * set aside (see Cqrs\Queue\TransportPause).
      *
      * @param list<int> $skipIds
-     * @param list<int> $skipProjectIds
+     * @param list<int> $skipTransportIds
      * @return array<string, mixed>
      * @throws \Xakki\Emailer\Exception\Exception
      * @throws \Doctrine\DBAL\Exception
@@ -62,29 +62,33 @@ class Queue extends AbstractRepository
         int $status,
         bool $selectForUpdate = false,
         array $skipIds = [],
-        array $skipProjectIds = [],
+        array $skipTransportIds = [],
     ): array {
         $query = static::createQueryBuilder();
         $query->andWhere('status = :status')
             ->setParameter('status', $status);
-        static::skip($query, $skipIds, $skipProjectIds);
+        static::skip($query, $skipIds, $skipTransportIds);
 
         return static::getRowByQuery($query, $selectForUpdate);
     }
 
     /**
+     * Excludes the given rows, and every row routed to one of the given
+     * transports — in the selection itself, so a paused transport's backlog
+     * costs no query per row (0: no transport; such a row is never excluded).
+     *
      * @param list<int> $skipIds
-     * @param list<int> $skipProjectIds
+     * @param list<int> $skipTransportIds
      */
-    protected static function skip(QueryBuilder $query, array $skipIds, array $skipProjectIds): void
+    protected static function skip(QueryBuilder $query, array $skipIds, array $skipTransportIds): void
     {
         if ($skipIds) {
             $query->andWhere('id NOT IN (:skip_ids)')
                 ->setParameter('skip_ids', $skipIds, ArrayParameterType::INTEGER);
         }
-        if ($skipProjectIds) {
-            $query->andWhere('project_id NOT IN (:skip_project_ids)')
-                ->setParameter('skip_project_ids', $skipProjectIds, ArrayParameterType::INTEGER);
+        if ($skipTransportIds) {
+            $query->andWhere('COALESCE(' . Transport::routedIdSubquery(static::tableName()) . ', 0) NOT IN (:skip_transport_ids)')
+                ->setParameter('skip_transport_ids', $skipTransportIds, ArrayParameterType::INTEGER);
         }
     }
 

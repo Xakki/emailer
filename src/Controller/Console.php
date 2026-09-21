@@ -27,7 +27,7 @@ class Console extends AbstractController
             fn(TransportPause $pause): ExecuteQueue => new ExecuteQueue(
                 $this->emailer,
                 $pause->skipIds(),
-                $pause->skipProjectIds(),
+                $pause->pausedTransportIds(),
             ),
             $repeat,
         );
@@ -39,7 +39,7 @@ class Console extends AbstractController
             fn(TransportPause $pause): RepeatQueue => new RepeatQueue(
                 $this->emailer,
                 $pause->skipIds(),
-                $pause->skipProjectIds(),
+                $pause->pausedTransportIds(),
             ),
             $repeat,
         );
@@ -93,9 +93,11 @@ class Console extends AbstractController
     }
 
     /**
-     * Claims the next row whose transport is not paused. Rows of a paused
-     * transport are released unchanged and excluded from the next selection,
-     * so this terminates once only paused rows remain (DataNotFound).
+     * Claims the next row whose transport is not paused. The selection SQL
+     * already excludes rows routed to a paused transport (one query per claim,
+     * whatever the paused backlog); a row that still resolves to a paused
+     * transport in PHP is released unchanged and excluded by id, so this
+     * terminates once only paused rows remain (DataNotFound).
      *
      * @param callable(TransportPause): AbstractQueue $factory
      */

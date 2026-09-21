@@ -33,14 +33,14 @@ abstract class AbstractQueue
     private bool $transportConnectionFailure = false;
 
     /**
-     * Selects the next row to process (FOR UPDATE), skipping the given row and
-     * project ids (see TransportPause); throws DataNotFound with httpCode 0
-     * when nothing is left.
+     * Selects the next row to process (FOR UPDATE), skipping the given rows and
+     * the rows routed to the given transports (see TransportPause); throws
+     * DataNotFound with httpCode 0 when nothing is left.
      *
      * @param list<int> $skipIds
-     * @param list<int> $skipProjectIds
+     * @param list<int> $skipTransportIds
      */
-    abstract public function __construct(Emailer $emailer, array $skipIds = [], array $skipProjectIds = []);
+    abstract public function __construct(Emailer $emailer, array $skipIds = [], array $skipTransportIds = []);
 
     public function getQueue(): Queue
     {
