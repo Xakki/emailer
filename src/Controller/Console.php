@@ -78,7 +78,11 @@ class Console extends AbstractController
             $job->claim();
             $db->commit();
         } catch (\Throwable $e) {
-            $db->rollBack();
+            // A failed commit() has already closed the transaction; an
+            // unguarded rollBack() would throw and mask the real error.
+            if ($db->isTransactionActive()) {
+                $db->rollBack();
+            }
             throw $e;
         }
         return $job;

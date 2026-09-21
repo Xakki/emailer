@@ -193,6 +193,39 @@ class QueueProcessingRegressionTest extends IntegrationCase
     }
 
     /**
+     * A failed COMMIT already ends the transaction in DBAL 4, so an unguarded
+     * rollBack() would throw NoActiveTransaction and hide the real error.
+     * Covers both short transactions: the claim (-> RUN) and the result write.
+     */
+    #[DataProvider('commitFailures')]
+    public function testCommitFailureIsReportedNotMaskedByRollBack(int $failingStatus): void
+    {
+        $this->createQueue(Model\Queue::QUEUE_STATUS_NEW, 0, 0);
+        $this->db->executeStatement('PRAGMA foreign_keys = ON');
+        $this->db->executeStatement('CREATE TABLE fk_parent (id INTEGER PRIMARY KEY)');
+        $this->db->executeStatement(
+            'CREATE TABLE fk_child (pid INTEGER REFERENCES fk_parent(id) DEFERRABLE INITIALLY DEFERRED)'
+        );
+        $this->db->executeStatement(
+            'CREATE TRIGGER commit_fails AFTER UPDATE OF status ON queue WHEN NEW.status = ' . $failingStatus
+            . ' BEGIN INSERT INTO fk_child (pid) VALUES (999); END'
+        );
+
+        $out = (new Console($this->emailer))->send();
+
+        self::assertStringContainsString('FOREIGN KEY', $out);
+    }
+
+    /**
+     * @return iterable<string, array{int}>
+     */
+    public static function commitFailures(): iterable
+    {
+        yield 'claim transaction' => [Model\Queue::QUEUE_STATUS_RUN];
+        yield 'result transaction' => [Model\Queue::QUEUE_STATUS_SUCCESS];
+    }
+
+    /**
      * @return iterable<string, array{string, int}>
      */
     public static function queueActions(): iterable
