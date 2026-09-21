@@ -132,7 +132,8 @@ class ConfigService
         foreach (['max_attempts', 'first_delay', 'max_delay'] as $key) {
             $value = $this->retry[$key] ?? null;
             // Env-sourced config is a string: accept integer-valued ones only
-            // (FILTER_VALIDATE_INT rejects "900.5", "9e2" and int overflow).
+            // (FILTER_VALIDATE_INT trims surrounding whitespace and rejects
+            // "900.5", "9e2" and int overflow).
             if (is_string($value)) {
                 $value = filter_var($value, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE) ?? $value;
             }

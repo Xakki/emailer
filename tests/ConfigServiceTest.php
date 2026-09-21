@@ -40,6 +40,10 @@ class ConfigServiceTest extends TestCase
         yield 'float' => [['first_delay' => 900.0], 'retry.first_delay must be an integer'];
         yield 'numeric string out of range' => [['first_delay' => '0'], 'retry.first_delay must be >= 1'];
         yield 'numeric string beyond int' => [['max_delay' => '99999999999999999999'], 'retry.max_delay must be an integer'];
+        yield 'negative int' => [['first_delay' => -5], 'retry.first_delay must be >= 1'];
+        yield 'negative numeric string' => [['first_delay' => '-5'], 'retry.first_delay must be >= 1'];
+        yield 'negative max_attempts string' => [['max_attempts' => '-5'], 'retry.max_attempts must be >= 1'];
+        yield 'inner whitespace' => [['first_delay' => '9 00'], 'retry.first_delay must be an integer'];
     }
 
     /**
@@ -51,6 +55,28 @@ class ConfigServiceTest extends TestCase
         $config = new ConfigService(['retry' => ['max_attempts' => '3', 'first_delay' => '600', 'max_delay' => '86400']]);
 
         self::assertSame(['max_attempts' => 3, 'first_delay' => 600, 'max_delay' => 86400], $config->retry);
+    }
+
+    /**
+     * FILTER_VALIDATE_INT trims surrounding whitespace, so a padded env value
+     * (" 900", "900 ") is accepted as the integer it spells.
+     */
+    #[DataProvider('whitespacePaddedValues')]
+    public function testWhitespacePaddedNumericStringsAreTrimmed(string $value): void
+    {
+        $config = new ConfigService(['retry' => ['first_delay' => $value]]);
+
+        self::assertSame(['max_attempts' => 5, 'first_delay' => 900, 'max_delay' => 86400], $config->retry);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function whitespacePaddedValues(): iterable
+    {
+        yield 'leading space' => [' 900'];
+        yield 'trailing space' => ['900 '];
+        yield 'tab and newline' => ["\t900\n"];
     }
 
     public function testPartialRetryOverrideKeepsTheOtherDefaults(): void
