@@ -88,3 +88,21 @@ migrations-create:
 migrations-status:
 	$(php) sh -l -c "./console migrations status"
 
+## Non-interactive test runner: builds the CI image (docker/ci/Dockerfile, same
+## one .github/workflows/ci.yml uses) and runs composer install + phpunit inside
+## a throwaway container. No `emailer-php`/`emailer-mariadb` service needed —
+## the suite is unit tests + SQLite in-memory integration tests only. Use this
+## instead of `phpunit` (which needs the long-lived docker-compose stack up).
+test-ci-build:
+	$(docker) build -f docker/ci/Dockerfile --build-arg PHP_VERSION=8.5 -t emailer-test:8.5 .
+
+test-ci:
+	$(docker) run --rm -v "$(CURDIR)":/app -w /app emailer-test:8.5 \
+		sh -c "composer install --no-interaction --prefer-dist --no-progress && vendor/bin/phpunit -c phpunit.xml"
+
+## make test-ci-filter filter=testSomething — same runner, one test/pattern (fast
+## red/green checks; vendor/ already installed by a prior test-ci run so this skips it).
+test-ci-filter:
+	$(docker) run --rm -v "$(CURDIR)":/app -w /app emailer-test:8.5 \
+		sh -c "vendor/bin/phpunit -c phpunit.xml --filter '$(filter)'"
+

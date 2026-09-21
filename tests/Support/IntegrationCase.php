@@ -23,7 +23,7 @@ abstract class IntegrationCase extends TestCase
 
     protected function setUp(): void
     {
-        $this->db = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
+        $this->db = $this->createConnection();
         foreach ($this->schema() as $sql) {
             $this->db->executeStatement($sql);
         }
@@ -35,6 +35,11 @@ abstract class IntegrationCase extends TestCase
         $this->resetStatic(Cqrs\Project\GetProject::class, 'projects');
         $this->resetStatic(Cqrs\Campaign\GetCampaign::class, 'campanies');
         $this->resetStatic(Cqrs\Email\GetEmail::class, 'emails');
+    }
+
+    protected function createConnection(): Connection
+    {
+        return DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
     }
 
     /**
@@ -87,8 +92,8 @@ abstract class IntegrationCase extends TestCase
                 tpl_content_id INTEGER NOT NULL, project_id INTEGER NOT NULL)",
             "CREATE TABLE queue (id INTEGER PRIMARY KEY AUTOINCREMENT, created TEXT DEFAULT CURRENT_TIMESTAMP,
                 sended TEXT, readed TEXT, unsubs TEXT, status INTEGER NOT NULL DEFAULT 0,
-                retry INTEGER NOT NULL DEFAULT 0, campaign_id INTEGER NOT NULL, email_id INTEGER NOT NULL,
-                project_id INTEGER NOT NULL, notify_id INTEGER NOT NULL)",
+                retry INTEGER NOT NULL DEFAULT 0, retry_at TEXT NULL, campaign_id INTEGER NOT NULL,
+                email_id INTEGER NOT NULL, project_id INTEGER NOT NULL, notify_id INTEGER NOT NULL)",
             "CREATE TABLE queue_data (id INTEGER PRIMARY KEY, data TEXT NOT NULL,
                 last_error TEXT, transport_id INTEGER)",
             "CREATE TABLE browser (id INTEGER PRIMARY KEY AUTOINCREMENT, ua TEXT NOT NULL, UNIQUE(ua))",

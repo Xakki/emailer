@@ -52,6 +52,7 @@ class Queue extends AbstractModel
     public ?string $readed;
     public int $status;
     public int $retry;
+    public ?string $retry_at = null;
     public int $project_id;
     public int $campaign_id;
     public int $notify_id;

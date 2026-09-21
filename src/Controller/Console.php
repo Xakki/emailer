@@ -24,7 +24,6 @@ class Console extends AbstractController
         $stopFlag = false;
         for ($i = 0; $i < $repeat; $i++) {
             $db = $this->emailer->getDb();
-            $db->setAutoCommit(false);
             $db->beginTransaction();
             try {
                 $status = (new ExecuteQueue($this->emailer))->handler();
@@ -59,7 +58,6 @@ class Console extends AbstractController
         $stopFlag = false;
         for ($i = 0; $i < $repeat; $i++) {
             $db = $this->emailer->getDb();
-            $db->setAutoCommit(false);
             $db->beginTransaction();
             try {
                 $status = (new RepeatQueue($this->emailer))->handler();

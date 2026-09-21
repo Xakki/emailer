@@ -10,6 +10,7 @@ namespace Xakki\Emailer;
  * @property-read array<string, mixed> $redis
  * @property-read array<string, mixed> $route
  * @property-read array<string, mixed> $migration
+ * @property-read array<string, int> $retry
  * @property-read string $secret_key
  */
 class ConfigService
@@ -69,6 +70,21 @@ class ConfigService
             'Xakki\Emailer\Migration' => __DIR__ . '/Migration',
         ],
         'all_or_nothing' => true,
+    ];
+
+    /**
+     * Geometric backoff for QUEUE_STATUS_TEMP_ERROR retries (see
+     * Cqrs\Queue\AbstractQueue and Helper\RetrySchedule). max_attempts counts the
+     * first send, so 5 = first send + 4 retries. first_delay/max_delay are the
+     * shortest/longest wait between attempts, in seconds; the cron tick
+     * (Mail::cronSendRepeat, every 900s) is the practical floor for first_delay.
+     *
+     * @var array<string,int>
+     */
+    protected array $retry = [
+        'max_attempts' => 5,
+        'first_delay' => 900,
+        'max_delay' => 86400,
     ];
 
     /**
