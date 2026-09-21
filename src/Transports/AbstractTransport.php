@@ -100,24 +100,31 @@ abstract class AbstractTransport implements \Stringable
 
     public function getSmtpErrorStatus(string $mess): int
     {
-        $this->authenticationFailure = false;
-        foreach (['Could not authenticate', 'authentication failed', 'authentication failure'] as $authenticationFailure) {
-            if (stripos($mess, $authenticationFailure) !== false) {
-                $this->authenticationFailure = true;
-                return Queue::QUEUE_STATUS_TEMP_ERROR;
-            }
-        }
-
+        $status = Queue::QUEUE_STATUS_ERROR;
         // https://yandex.ru/support/mail-new/web/letter/create.html
         // https://mail.qip.ru/support/
         // SPAM CHECK
         // http://mxtoolbox.com/
-        foreach (self::$statusWordKey as $word => $status) {
+        foreach (self::$statusWordKey as $word => $wordStatus) {
             if (stripos($mess, (string) $word) !== false) {
-                return $status;
+                $status = $wordStatus;
+                break;
             }
         }
-        return Queue::QUEUE_STATUS_ERROR;
+
+        // Authentication phrases only decide what the table left unclassified
+        // (or already called temporary): a recipient-side rejection mentioning
+        // "DMARC authentication failed" must keep its SPAM / INVALID_* verdict.
+        $this->authenticationFailure = false;
+        if ($status === Queue::QUEUE_STATUS_ERROR || $status === Queue::QUEUE_STATUS_TEMP_ERROR) {
+            foreach (['Could not authenticate', 'authentication failed', 'authentication failure'] as $phrase) {
+                if (stripos($mess, $phrase) !== false) {
+                    $this->authenticationFailure = true;
+                    return Queue::QUEUE_STATUS_TEMP_ERROR;
+                }
+            }
+        }
+        return $status;
     }
 
     public static function fromString(string $json, Emailer $emailer): self
