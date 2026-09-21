@@ -50,7 +50,7 @@ class Console extends AbstractController
      * short transaction, then processed by handler() outside any transaction:
      * SMTP I/O never runs while a DB transaction or row lock is held.
      *
-     * After a failure to connect to / log in to the SMTP relay, the row's
+     * After a failure to connect to / log in to the SMTP server, the row's
      * transport is paused for the rest of this run; skipped rows do not count
      * against $repeat.
      *

@@ -49,10 +49,11 @@ follow [Semantic Versioning](https://semver.org/).
     lock wait timeout / lost connection) now go through the retry backoff
     instead of failing terminally on the first attempt; other exceptions stay
     terminal `ERROR`.
-  - When a relay transport's SMTP connect, TLS or AUTH step fails, the transport
-    is paused for the rest of the run: its other messages are left untouched,
-    other transports continue. Rejections after login (MAIL FROM / RCPT / DATA)
-    never pause it, even when their text mentions authentication. A custom
+  - When a transport's SMTP connect, TLS or AUTH step fails (direct-MX mode
+    included), the transport is paused for the rest of the run: its other
+    messages are left untouched, other transports continue. Rejections after
+    login (MAIL FROM / RCPT / DATA) never pause it, even when their text
+    mentions authentication. A custom
     transport opts in by setting the protected `$connectionFailure`
     (`AbstractTransport::isConnectionFailure()`). A paused
     transport's messages are excluded by the selection query itself, so its

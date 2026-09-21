@@ -62,7 +62,7 @@ abstract class AbstractQueue
 
     /**
      * Whether handler() failed while connecting to / logging in to the
-     * transport's SMTP relay (connect, TLS, AUTH) — a transport-wide failure,
+     * transport's SMTP server (connect, TLS, AUTH) — a transport-wide failure,
      * not a per-message one (see AbstractTransport::isConnectionFailure()).
      */
     public function isTransportConnectionFailure(): bool

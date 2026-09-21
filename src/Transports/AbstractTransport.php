@@ -165,9 +165,10 @@ abstract class AbstractTransport implements \Stringable
 
     /**
      * Whether the last send() failed while connecting to / logging in to the
-     * SMTP relay (connect, TLS, AUTH), before the message was handed over: the
-     * transport itself is unusable (host down, bad credentials, locked
-     * account), not just this message — see Console's per-run transport pause.
+     * SMTP server — relay or direct MX (connect, TLS, AUTH) — before the
+     * message was handed over: the transport is treated as unusable (host
+     * down, bad credentials, locked account), not just this message — see
+     * Console's per-run transport pause.
      * A rejection later in the dialogue never sets it, whatever its text.
      */
     public function isConnectionFailure(): bool

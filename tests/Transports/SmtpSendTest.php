@@ -187,10 +187,10 @@ class SmtpSendTest extends TestCase
     }
 
     /**
-     * Direct delivery (HOST_LOCAL) connects to the recipient's own MX: a dead
-     * MX is that recipient's problem, not the transport's — no pause.
+     * Direct delivery (HOST_LOCAL) follows the same rule as a relay: a failed
+     * connect pauses the transport for the rest of the run.
      */
-    public function testDirectMxConnectFailureIsNotAConnectionFailure(): void
+    public function testDirectMxConnectFailureIsAConnectionFailure(): void
     {
         $server = new ScriptedSmtp('connect');
         $smtp = $this->smtp($this->mailerWith($server));
@@ -200,7 +200,7 @@ class SmtpSendTest extends TestCase
         self::assertSame(Queue::QUEUE_STATUS_TEMP_ERROR, $smtp->send(new SmtpSendQueue(['id' => 1, 'email_id' => 1])));
         self::assertStringContainsString('Connection refused', $smtp->getError());
         self::assertSame(['connect'], $server->calls);
-        self::assertFalse($smtp->isConnectionFailure());
+        self::assertTrue($smtp->isConnectionFailure());
     }
 
     private function mailerWith(SmtpClient $server): SmtpMailer

@@ -198,10 +198,9 @@ class Smtp extends AbstractTransport
                 $phpMailer->connect();
             } catch (PHPMailerException $exception) {
                 // Connect / TLS / AUTH failed before anything was handed over:
-                // the relay or its credentials are unusable for every message of
-                // this transport. Direct delivery (HOST_LOCAL) connects to the
-                // recipient's own MX, whose failure says nothing about the rest.
-                $this->connectionFailure = $this->host !== self::HOST_LOCAL;
+                // treated as transport-wide for every transport, direct-MX
+                // (HOST_LOCAL) included — the rest of the run skips it.
+                $this->connectionFailure = true;
                 throw $exception;
             }
             $result = $phpMailer->postSend();

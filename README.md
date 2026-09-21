@@ -150,13 +150,13 @@ defaults, 5 attempts in total, waits of 900 s, ~69 min, ~5.2 h and 24 h. After
 terminal at once. The `reSend` interval is the practical floor for
 `first_delay`.
 
-**Transport pause.** When a relay transport cannot be used at all — the SMTP
+**Transport pause.** When a transport cannot be used at all — the SMTP
 connect, TLS or AUTH step fails — the rest of that transport's messages are not
 attempted in the current `send` / `reSend` run (they keep their state); other
-transports continue. A rejection later in the dialogue (MAIL FROM / RCPT /
-DATA) never pauses the transport, whatever its text; nor does a failed
-connection in direct-MX mode (`host` = `localhost`), which reaches the
-recipient's own MX.
+transports continue. This includes direct-MX mode (`host` = `localhost`): one
+unreachable recipient MX pauses the transport for the run. A rejection later
+in the dialogue (MAIL FROM / RCPT / DATA) never pauses the transport, whatever
+its text.
 
 **Delivery guarantee: at most once.** A message is claimed (`RUN`) in a short
 transaction before the SMTP dialogue, which runs outside any transaction. If
