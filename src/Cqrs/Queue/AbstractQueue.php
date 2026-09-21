@@ -9,6 +9,7 @@ use Xakki\Emailer\Cqrs;
 use Xakki\Emailer\Emailer;
 use Xakki\Emailer\Exception;
 use Xakki\Emailer\Helper\RetrySchedule;
+use Xakki\Emailer\Model;
 use Xakki\Emailer\Model\Queue;
 
 abstract class AbstractQueue
@@ -28,8 +29,45 @@ abstract class AbstractQueue
 
     protected Queue $queue;
     protected Emailer $emailer;
+    private ?Model\Transport $transportModel = null;
+    private bool $transportAuthenticationFailure = false;
 
-    abstract public function __construct(Emailer $emailer);
+    /**
+     * Selects the next row to process (FOR UPDATE), skipping the given row and
+     * project ids (see TransportPause); throws DataNotFound with httpCode 0
+     * when nothing is left.
+     *
+     * @param list<int> $skipIds
+     * @param list<int> $skipProjectIds
+     */
+    abstract public function __construct(Emailer $emailer, array $skipIds = [], array $skipProjectIds = []);
+
+    public function getQueue(): Queue
+    {
+        return $this->queue;
+    }
+
+    /**
+     * The transport this row is routed to, or null when it cannot be resolved
+     * (handler() then records that failure for the row).
+     */
+    public function findTransport(): ?Model\Transport
+    {
+        try {
+            return $this->getTransport();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Whether handler() failed because the transport rejected SMTP
+     * authentication — a transport-wide failure, not a per-message one.
+     */
+    public function isTransportAuthenticationFailure(): bool
+    {
+        return $this->transportAuthenticationFailure;
+    }
 
     /**
      * Clock hook, overridable by tests (see TestSmtp::createPhpMailer() for the
@@ -79,13 +117,13 @@ abstract class AbstractQueue
                 $this->claim();
             }
 
-            $transportModel = (new Cqrs\Transport\GetTransportByQueue($this->queue))
-                ->handler();
+            $transportModel = $this->getTransport();
             $log->debug('Transport: ' . $transportModel->id, $logParam);
             $this->queue->updateTransportId($transportModel->id);
 
             $transport = $transportModel->getSmtpTransport($this->emailer);
             $status = $transport->send($this->queue);
+            $this->transportAuthenticationFailure = $transport->isAuthenticationFailure();
 
             if (!$status) {
                 $delivered = true;
@@ -134,6 +172,11 @@ abstract class AbstractQueue
             }
         }
         return $this->queue->status;
+    }
+
+    private function getTransport(): Model\Transport
+    {
+        return $this->transportModel ??= (new Cqrs\Transport\GetTransportByQueue($this->queue))->handler();
     }
 
     /**

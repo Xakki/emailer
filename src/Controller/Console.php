@@ -8,6 +8,7 @@ use Xakki\Emailer\Cqrs\Helper\Migration;
 use Xakki\Emailer\Cqrs\Queue\AbstractQueue;
 use Xakki\Emailer\Cqrs\Queue\ExecuteQueue;
 use Xakki\Emailer\Cqrs\Queue\RepeatQueue;
+use Xakki\Emailer\Cqrs\Queue\TransportPause;
 use Xakki\Emailer\Cqrs\Transport\NewDayTransport;
 use Xakki\Emailer\Exception\DataNotFound;
 use Xakki\Emailer\Model\Queue;
@@ -22,12 +23,26 @@ class Console extends AbstractController
 {
     protected function actionSend(int $repeat = 1): string
     {
-        return $this->processQueue(fn(): ExecuteQueue => new ExecuteQueue($this->emailer), $repeat);
+        return $this->processQueue(
+            fn(TransportPause $pause): ExecuteQueue => new ExecuteQueue(
+                $this->emailer,
+                $pause->skipIds(),
+                $pause->skipProjectIds(),
+            ),
+            $repeat,
+        );
     }
 
     protected function actionReSend(int $repeat = 1): string
     {
-        return $this->processQueue(fn(): RepeatQueue => new RepeatQueue($this->emailer), $repeat);
+        return $this->processQueue(
+            fn(TransportPause $pause): RepeatQueue => new RepeatQueue(
+                $this->emailer,
+                $pause->skipIds(),
+                $pause->skipProjectIds(),
+            ),
+            $repeat,
+        );
     }
 
     /**
@@ -35,17 +50,26 @@ class Console extends AbstractController
      * short transaction, then processed by handler() outside any transaction:
      * SMTP I/O never runs while a DB transaction or row lock is held.
      *
-     * @param callable(): AbstractQueue $factory Selects the next row (FOR UPDATE);
-     *     throws DataNotFound with httpCode 0 when the queue is drained.
+     * After an SMTP authentication failure the row's transport is paused for
+     * the rest of this run; skipped rows do not count against $repeat.
+     *
+     * @param callable(TransportPause): AbstractQueue $factory Selects the next
+     *     row (FOR UPDATE); throws DataNotFound with httpCode 0 when drained.
      */
     private function processQueue(callable $factory, int $repeat): string
     {
         $info = [];
+        $pause = new TransportPause();
         for ($i = 0; $i < $repeat; $i++) {
             $stopFlag = false;
             try {
-                $status = $this->claim($factory)->handler();
+                $job = $this->claim($factory, $pause);
+                $status = $job->handler();
                 $mess = Queue::TITLE_QUEUE_STATUS[$status] ?? 'unknown';
+                $transport = $job->findTransport();
+                if ($transport && $job->isTransportAuthenticationFailure()) {
+                    $pause->pause($transport);
+                }
             } catch (DataNotFound $e) {
                 if ($e->httpCode === 0) {
                     break;
@@ -68,25 +92,37 @@ class Console extends AbstractController
     }
 
     /**
-     * @param callable(): AbstractQueue $factory
+     * Claims the next row whose transport is not paused. Rows of a paused
+     * transport are released unchanged and excluded from the next selection,
+     * so this terminates once only paused rows remain (DataNotFound).
+     *
+     * @param callable(TransportPause): AbstractQueue $factory
      */
-    private function claim(callable $factory): AbstractQueue
+    private function claim(callable $factory, TransportPause $pause): AbstractQueue
     {
         $db = $this->emailer->getDb();
-        $db->beginTransaction();
-        try {
-            $job = $factory();
-            $job->claim();
-            $db->commit();
-        } catch (\Throwable $e) {
-            // A failed commit() has already closed the transaction; an
-            // unguarded rollBack() would throw and mask the real error.
-            if ($db->isTransactionActive()) {
-                $db->rollBack();
+        while (true) {
+            $db->beginTransaction();
+            try {
+                $job = $factory($pause);
+                $transport = $pause->isActive() ? $job->findTransport() : null;
+                if ($transport && $pause->isPaused($transport)) {
+                    $db->commit();
+                    $pause->skip($job->getQueue());
+                    continue;
+                }
+                $job->claim();
+                $db->commit();
+                return $job;
+            } catch (\Throwable $e) {
+                // A failed commit() has already closed the transaction; an
+                // unguarded rollBack() would throw and mask the real error.
+                if ($db->isTransactionActive()) {
+                    $db->rollBack();
+                }
+                throw $e;
             }
-            throw $e;
         }
-        return $job;
     }
 
     protected function actionNewDay(): string

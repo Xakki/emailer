@@ -264,6 +264,74 @@ class QueueProcessingRegressionTest extends IntegrationCase
         yield 'reSend (due TEMP_ERROR row)' => ['reSend', Model\Queue::QUEUE_STATUS_TEMP_ERROR];
     }
 
+    /**
+     * SMTP authentication failure = the transport is down, not the message: the
+     * rest of that transport's due rows are not attempted in this run (one AUTH
+     * attempt per transport per tick, not one per row), they keep their state,
+     * and the loop terminates instead of re-selecting them.
+     */
+    public function testReSendPausesATransportAfterAnAuthenticationFailure(): void
+    {
+        $campaign = $this->createProjectWithTransports('Down', ['example.com' => 'smtpAuthFailCounted']);
+        $ids = [];
+        foreach (['a1', 'a2', 'a3'] as $user) {
+            $ids[] = $this->enqueue($campaign, $user . '@example.com', Model\Queue::QUEUE_STATUS_TEMP_ERROR, 1, '2000-01-01 00:00:00');
+        }
+
+        $out = (new Console($this->emailer))->reSend(10);
+
+        self::assertSame(1, QueueRegressionTransport::$deliveries, 'SMTP AUTH attempts in one reSend(10); ' . $out);
+        self::assertSame("Statuses: array (\n  'temporary error' => 1,\n)", $out);
+        $this->assertQueueState($ids[0], Model\Queue::QUEUE_STATUS_TEMP_ERROR, 2);
+        self::assertNotSame('2000-01-01 00:00:00', Repository\Queue::findOne(['id' => $ids[0]])['retry_at']);
+        foreach ([$ids[1], $ids[2]] as $id) {
+            $this->assertQueueState($id, Model\Queue::QUEUE_STATUS_TEMP_ERROR, 1);
+            self::assertSame('2000-01-01 00:00:00', Repository\Queue::findOne(['id' => $id])['retry_at']);
+        }
+    }
+
+    /**
+     * Rows of other transports continue — both another project's transport and
+     * another transport of the same project (domain-specific routing).
+     */
+    #[DataProvider('pausedTransportLayouts')]
+    public function testSendPausesOnlyTheTransportThatFailedAuthentication(bool $sameProject): void
+    {
+        $down = $this->createProjectWithTransports('Down', $sameProject
+            ? ['example.com' => 'smtpAuthFailCounted', 'other.test' => 'countDelivery']
+            : ['example.com' => 'smtpAuthFailCounted']);
+        $up = $sameProject ? $down : $this->createProjectWithTransports('Up', ['other.test' => 'countDelivery']);
+
+        $pausedIds = [];
+        $pausedIds[] = $this->enqueue($down, 'a1@example.com', Model\Queue::QUEUE_STATUS_NEW);
+        $pausedIds[] = $this->enqueue($down, 'a2@example.com', Model\Queue::QUEUE_STATUS_NEW);
+        $sentIds = [$this->enqueue($up, 'b1@other.test', Model\Queue::QUEUE_STATUS_NEW)];
+        $pausedIds[] = $this->enqueue($down, 'a3@example.com', Model\Queue::QUEUE_STATUS_NEW);
+        $sentIds[] = $this->enqueue($up, 'b2@other.test', Model\Queue::QUEUE_STATUS_NEW);
+
+        $out = (new Console($this->emailer))->send(10);
+
+        self::assertSame("Statuses: array (\n  'temporary error' => 1,\n  'success' => 2,\n)", $out);
+        self::assertSame(3, QueueRegressionTransport::$deliveries, 'one AUTH attempt + two deliveries');
+        $this->assertQueueState($pausedIds[0], Model\Queue::QUEUE_STATUS_TEMP_ERROR, 1);
+        foreach ([$pausedIds[1], $pausedIds[2]] as $id) {
+            $this->assertQueueState($id, Model\Queue::QUEUE_STATUS_NEW, 0);
+            self::assertNull(Repository\Queue::findOne(['id' => $id])['retry_at']);
+        }
+        foreach ($sentIds as $id) {
+            $this->assertQueueState($id, Model\Queue::QUEUE_STATUS_SUCCESS, 0);
+        }
+    }
+
+    /**
+     * @return iterable<string, array{bool}>
+     */
+    public static function pausedTransportLayouts(): iterable
+    {
+        yield 'other project' => [false];
+        yield 'same project, other transport' => [true];
+    }
+
     #[DataProvider('backlogRowsThatMustNeverBeAutoRetried')]
     public function testRepeatQueueNeverSelectsLegacyOrNotYetDueRows(
         int $status,
@@ -456,6 +524,62 @@ class QueueProcessingRegressionTest extends IntegrationCase
         return $queue;
     }
 
+    /**
+     * One project with one domain-routed transport per entry (domain => failure mode).
+     *
+     * @param array<string, string> $transports
+     */
+    private function createProjectWithTransports(string $name, array $transports): Model\Campaign
+    {
+        $project = (new Cqrs\Project\CreateProject($name, [
+            Model\Template::NAME_HOST => 'demo.test',
+            Model\Template::NAME_ROUTE => 'rdr',
+            Model\Template::NAME_URL_LOGO => __DIR__ . '/../logo.png',
+        ]))->handler();
+        $campaign = $project->createCampaign(
+            'Subject',
+            $project->createTplWrapper('wrap', '{{content}}'),
+            $project->createTplContent('cont', 'Hi'),
+            $project->createNotify('News'),
+            [],
+        );
+        foreach ($transports as $domain => $failure) {
+            $transport = new QueueRegressionTransport($this->emailer);
+            $transport->failure = $failure;
+            Repository\Transport::insert([
+                'params' => (string) $transport,
+                'project_id' => $project->id,
+                'domain_id' => $this->domainId($domain),
+                'limit_day' => 0,
+                'cnt_day' => 0,
+            ]);
+        }
+        return $campaign;
+    }
+
+    private function domainId(string $domain): int
+    {
+        return Repository\Domain::findId(['name' => $domain]) ?: Repository\Domain::insert(['name' => $domain]);
+    }
+
+    private function enqueue(Model\Campaign $campaign, string $email, int $status, int $retry = 0, ?string $retryAt = null): int
+    {
+        Repository\Email::insert([
+            'email' => $email,
+            'name' => 'Foo',
+            'project_id' => $campaign->project_id,
+            'domain_id' => $this->domainId(explode('@', $email)[1]),
+        ]);
+        $this->emailer->getNewSender($campaign->project_id, $campaign->id)
+            ->send((new Mail())->setEmail($email)->setEmailName('Foo'));
+        $queue = Model\Queue::findOne(['status' => Model\Queue::QUEUE_STATUS_NEW, 'retry' => 0, 'email_id' => Repository\Email::findId(['email' => $email])]);
+        $queue->status = $status;
+        $queue->retry = $retry;
+        $queue->retry_at = $retryAt;
+        $queue->update(['status', 'retry', 'retry_at']);
+        return $queue->id;
+    }
+
     private function makeDue(Model\Queue $queue): void
     {
         $queue->retry_at = '2000-01-01 00:00:00';
@@ -571,6 +695,7 @@ final class QueueRegressionTransport extends AbstractTransport
             // QUEUE_STATUS_TEMP_ERROR for SMTP auth failures.
             'smtpAuthentication' => $this->getSmtpErrorStatus('SMTP Error: Could not authenticate.'),
             'countDelivery' => $this->deliver(),
+            'smtpAuthFailCounted' => $this->failAuthentication(),
             'redis' => throw new \RedisException('Connection refused'),
             'cacheUnavailable' => throw new CacheUnavailable('Cant connect to Redis'),
             'deadlock' => throw new DeadlockException(self::driverError('Deadlock found when trying to get lock'), null),
@@ -587,6 +712,12 @@ final class QueueRegressionTransport extends AbstractTransport
     private static function driverError(string $message): PdoDriverException
     {
         return PdoDriverException::new(new \PDOException($message));
+    }
+
+    private function failAuthentication(): int
+    {
+        self::$deliveries++;
+        return $this->getSmtpErrorStatus('SMTP Error: Could not authenticate.');
     }
 
     private function deliver(): int

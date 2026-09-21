@@ -17,6 +17,7 @@ abstract class AbstractTransport implements \Stringable
     public string $replyName = '';
 
     protected string $errorMessage = '';
+    protected bool $authenticationFailure = false;
     /** @var array<mixed> */
     protected static array $statusWordKey = [
         // YANDEX = Message rejected under suspicion of SPAM
@@ -99,8 +100,10 @@ abstract class AbstractTransport implements \Stringable
 
     public function getSmtpErrorStatus(string $mess): int
     {
+        $this->authenticationFailure = false;
         foreach (['Could not authenticate', 'authentication failed', 'authentication failure'] as $authenticationFailure) {
             if (stripos($mess, $authenticationFailure) !== false) {
+                $this->authenticationFailure = true;
                 return Queue::QUEUE_STATUS_TEMP_ERROR;
             }
         }
@@ -151,6 +154,16 @@ abstract class AbstractTransport implements \Stringable
     public function getError(): string
     {
         return $this->errorMessage;
+    }
+
+    /**
+     * Whether the last getSmtpErrorStatus() verdict was an SMTP authentication
+     * failure: the transport itself is unusable (bad credentials, locked
+     * account), not just this message — see Console's per-run transport pause.
+     */
+    public function isAuthenticationFailure(): bool
+    {
+        return $this->authenticationFailure;
     }
 
     /**
