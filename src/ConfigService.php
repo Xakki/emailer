@@ -81,7 +81,7 @@ class ConfigService
      * (integers — integer-valued numeric strings, e.g. from env, are cast to int —
      * max_attempts >= 1, first_delay >= 1, max_delay >= first_delay).
      *
-     * @var array<string,int>
+     * @var array<string,mixed> ints once validateRetry() has run
      */
     protected array $retry = [
         'max_attempts' => 5,
