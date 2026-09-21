@@ -76,8 +76,9 @@ class ConfigService
      * Geometric backoff for QUEUE_STATUS_TEMP_ERROR retries (see
      * Cqrs\Queue\AbstractQueue and Helper\RetrySchedule). max_attempts counts the
      * first send, so 5 = first send + 4 retries. first_delay/max_delay are the
-     * shortest/longest wait between attempts, in seconds; the cron tick
-     * (Mail::cronSendRepeat, every 900s) is the practical floor for first_delay.
+     * shortest/longest wait between attempts, in seconds; the `reSend` cron
+     * interval is the practical floor for first_delay. Validated at construction
+     * (integers, max_attempts >= 1, first_delay >= 1, max_delay >= first_delay).
      *
      * @var array<string,int>
      */
@@ -119,6 +120,28 @@ class ConfigService
                 $this->{$k} = $v;
             }
         }
+        $this->validateRetry();
+    }
+
+    /**
+     * @throws \InvalidArgumentException
+     */
+    protected function validateRetry(): void
+    {
+        foreach (['max_attempts', 'first_delay', 'max_delay'] as $key) {
+            if (!is_int($this->retry[$key] ?? null)) {
+                throw new \InvalidArgumentException(sprintf(
+                    'retry.%s must be an integer, %s given',
+                    $key,
+                    get_debug_type($this->retry[$key] ?? null),
+                ));
+            }
+        }
+        Helper\RetrySchedule::assertValid(
+            $this->retry['max_attempts'],
+            $this->retry['first_delay'],
+            $this->retry['max_delay'],
+        );
     }
 
     /**

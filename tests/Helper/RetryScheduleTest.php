@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Xakki\Emailer\Tests\Helper;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Xakki\Emailer\Helper\RetrySchedule;
 
@@ -39,5 +40,27 @@ class RetryScheduleTest extends TestCase
         self::assertSame(900, RetrySchedule::delaySeconds(1, 3, 900, 86400));
         self::assertSame(86400, RetrySchedule::delaySeconds(2, 3, 900, 86400));
         self::assertNull(RetrySchedule::delaySeconds(3, 3, 900, 86400));
+    }
+
+    /**
+     * A schedule that would divide by zero (first_delay 0) or collapse the
+     * waits (max_delay < first_delay) is rejected, never computed.
+     */
+    #[DataProvider('invalidSchedules')]
+    public function testInvalidScheduleIsRejected(int $maxAttempts, int $firstDelay, int $maxDelay): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        RetrySchedule::delaySeconds(1, $maxAttempts, $firstDelay, $maxDelay);
+    }
+
+    /**
+     * @return iterable<string, array{int, int, int}>
+     */
+    public static function invalidSchedules(): iterable
+    {
+        yield 'first_delay 0 (division by zero)' => [5, 0, 86400];
+        yield 'negative first_delay' => [5, -1, 86400];
+        yield 'max_delay below first_delay' => [5, 900, 0];
+        yield 'no attempts at all' => [0, 900, 86400];
     }
 }

@@ -23,9 +23,11 @@ final class RetrySchedule
      * @param int $maxDelay Seconds to wait before the last attempt.
      * @return int|null Seconds to wait before the next attempt, or null when
      *     $attemptsDone has reached $maxAttempts (no attempts remain — terminal).
+     * @throws \InvalidArgumentException On a schedule assertValid() rejects.
      */
     public static function delaySeconds(int $attemptsDone, int $maxAttempts, int $firstDelay, int $maxDelay): ?int
     {
+        self::assertValid($maxAttempts, $firstDelay, $maxDelay);
         if ($attemptsDone >= $maxAttempts) {
             return null;
         }
@@ -43,5 +45,28 @@ final class RetrySchedule
 
         $ratio = ($maxDelay / $firstDelay) ** (1 / ($intervals - 1));
         return (int) round($firstDelay * ($ratio ** ($attemptsDone - 1)));
+    }
+
+    /**
+     * ConfigService checks the `retry` config with this once at construction,
+     * so a bad value fails fast instead of on every temporary failure.
+     *
+     * @throws \InvalidArgumentException
+     */
+    public static function assertValid(int $maxAttempts, int $firstDelay, int $maxDelay): void
+    {
+        if ($maxAttempts < 1) {
+            throw new \InvalidArgumentException('retry.max_attempts must be >= 1, got ' . $maxAttempts);
+        }
+        if ($firstDelay < 1) {
+            throw new \InvalidArgumentException('retry.first_delay must be >= 1 second, got ' . $firstDelay);
+        }
+        if ($maxDelay < $firstDelay) {
+            throw new \InvalidArgumentException(sprintf(
+                'retry.max_delay (%d) must be >= retry.first_delay (%d)',
+                $maxDelay,
+                $firstDelay,
+            ));
+        }
     }
 }
