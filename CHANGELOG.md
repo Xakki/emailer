@@ -57,7 +57,8 @@ follow [Semantic Versioning](https://semver.org/).
     instead of sending it again.
   - The `retry` config is validated when `ConfigService` is constructed
     (integers; `max_attempts >= 1`, `first_delay >= 1`,
-    `max_delay >= first_delay`). **BC**: string values (e.g. raw env) are rejected.
+    `max_delay >= first_delay`). Integer-valued numeric strings (e.g. raw env
+    `"900"`) are cast to int; other strings (`"900.5"`, `"abc"`) are rejected.
   - One `'Run queue'` (debug) line per message at start and one `'Send queue'`
     (info) outcome line with `status`, `retry`, `retry_at`.
 - SMTP error classification: the authentication phrases are checked after the

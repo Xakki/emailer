@@ -74,7 +74,7 @@ $config = new ConfigService([
 | `redis`      | `emailer-redis:6379`          | Used for MX / auth caches                         |
 | `route`      | built‑in tracking routes      | Phroute route → `[Controller, method]` map        |
 | `migration`  | `src/Migration`               | Doctrine Migrations config                        |
-| `retry`      | `max_attempts` 5, `first_delay` 900, `max_delay` 86400 | Backoff for temporary failures (see below); integers, validated at construction |
+| `retry`      | `max_attempts` 5, `first_delay` 900, `max_delay` 86400 | Backoff for temporary failures (see below); integers (integer numeric strings such as env values are cast), validated at construction |
 | `secret_key` | `''` (disabled)               | Guards the read‑only body accessor                |
 
 ## Usage

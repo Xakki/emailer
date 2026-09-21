@@ -78,7 +78,8 @@ class ConfigService
      * first send, so 5 = first send + 4 retries. first_delay/max_delay are the
      * shortest/longest wait between attempts, in seconds; the `reSend` cron
      * interval is the practical floor for first_delay. Validated at construction
-     * (integers, max_attempts >= 1, first_delay >= 1, max_delay >= first_delay).
+     * (integers — integer-valued numeric strings, e.g. from env, are cast to int —
+     * max_attempts >= 1, first_delay >= 1, max_delay >= first_delay).
      *
      * @var array<string,int>
      */
@@ -129,13 +130,20 @@ class ConfigService
     protected function validateRetry(): void
     {
         foreach (['max_attempts', 'first_delay', 'max_delay'] as $key) {
-            if (!is_int($this->retry[$key] ?? null)) {
+            $value = $this->retry[$key] ?? null;
+            // Env-sourced config is a string: accept integer-valued ones only
+            // (FILTER_VALIDATE_INT rejects "900.5", "9e2" and int overflow).
+            if (is_string($value)) {
+                $value = filter_var($value, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE) ?? $value;
+            }
+            if (!is_int($value)) {
                 throw new \InvalidArgumentException(sprintf(
                     'retry.%s must be an integer, %s given',
                     $key,
-                    get_debug_type($this->retry[$key] ?? null),
+                    get_debug_type($value),
                 ));
             }
+            $this->retry[$key] = $value;
         }
         Helper\RetrySchedule::assertValid(
             $this->retry['max_attempts'],

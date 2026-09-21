@@ -33,7 +33,24 @@ class ConfigServiceTest extends TestCase
         yield 'first_delay 0' => [['first_delay' => 0], 'first_delay'];
         yield 'max_attempts 0' => [['max_attempts' => 0], 'max_attempts'];
         yield 'max_delay below first_delay' => [['max_delay' => 60], 'max_delay'];
-        yield 'string from env' => [['first_delay' => '900'], 'retry.first_delay must be an integer'];
+        yield 'fractional string' => [['first_delay' => '900.5'], 'retry.first_delay must be an integer'];
+        yield 'non-numeric string' => [['max_attempts' => 'five'], 'retry.max_attempts must be an integer'];
+        yield 'exponent string' => [['max_delay' => '9e4'], 'retry.max_delay must be an integer'];
+        yield 'empty string' => [['first_delay' => ''], 'retry.first_delay must be an integer'];
+        yield 'float' => [['first_delay' => 900.0], 'retry.first_delay must be an integer'];
+        yield 'numeric string out of range' => [['first_delay' => '0'], 'retry.first_delay must be >= 1'];
+        yield 'numeric string beyond int' => [['max_delay' => '99999999999999999999'], 'retry.max_delay must be an integer'];
+    }
+
+    /**
+     * Env-sourced config arrives as strings: integer-valued ones are accepted
+     * and stored as real ints (RetrySchedule and the queue code are int-typed).
+     */
+    public function testIntegerNumericStringsFromEnvAreCastToInt(): void
+    {
+        $config = new ConfigService(['retry' => ['max_attempts' => '3', 'first_delay' => '600', 'max_delay' => '86400']]);
+
+        self::assertSame(['max_attempts' => 3, 'first_delay' => 600, 'max_delay' => 86400], $config->retry);
     }
 
     public function testPartialRetryOverrideKeepsTheOtherDefaults(): void
