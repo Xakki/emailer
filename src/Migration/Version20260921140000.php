@@ -12,12 +12,12 @@ use Doctrine\Migrations\AbstractMigration;
  * "next attempt at" timestamp. Additive only — no data changes, no drops.
  *
  * NULL is the load-bearing default: every row created before this migration
- * (the historical backlog, `email_service` is shared by project_id 4 and 5)
- * keeps retry_at = NULL and is therefore never selected by
- * Repository\Queue::findOneForRepeat() (see Cqrs\Queue\RepeatQueue), which
- * requires `retry_at IS NOT NULL`. Only rows that fail *after* this migration
- * — via the new Cqrs\Queue\AbstractQueue backoff logic — ever get a non-NULL
- * retry_at and become eligible for a scheduled retry.
+ * (the historical backlog, across all projects) keeps retry_at = NULL and is
+ * therefore never selected by Repository\Queue::findOneForRepeat() (see
+ * Cqrs\Queue\RepeatQueue), which requires `retry_at IS NOT NULL`. Only rows
+ * that fail *after* this migration — via the new Cqrs\Queue\AbstractQueue
+ * backoff logic — ever get a non-NULL retry_at and become eligible for a
+ * scheduled retry.
  */
 final class Version20260921140000 extends AbstractMigration
 {

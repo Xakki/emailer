@@ -115,7 +115,8 @@ class QueueProcessingRegressionTest extends IntegrationCase
      * SMTP authentication failures (classified by the transport's own
      * getSmtpErrorStatus(), not a thrown exception) must enter the same
      * geometric backoff as any other temporary failure instead of going
-     * straight to terminal on attempt 1 — this incident's own root cause.
+     * straight to terminal on attempt 1 (a credentials outage must not turn
+     * the whole backlog into terminal errors).
      * Walks the same 5-attempt schedule as the generic test above, but via
      * a transport whose send() returns getSmtpErrorStatus('Could not
      * authenticate') on every attempt.
