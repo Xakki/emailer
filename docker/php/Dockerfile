@@ -40,7 +40,8 @@ COPY cronjob /etc/cron.d/
 RUN chmod 0644 /etc/cron.d/cronjob
 RUN crontab /etc/cron.d/cronjob
 
-STOPSIGNAL SIGKILL
+# SIGQUIT = php-fpm's graceful stop: in-flight requests finish first.
+STOPSIGNAL SIGQUIT
 #printenv > /etc/environment &&
 # Debian cron daemonizes itself; exec hands PID 1 to php-fpm (with `cron -f`
 # in front, the foreground cron blocked and php-fpm never started).
