@@ -42,4 +42,6 @@ RUN crontab /etc/cron.d/cronjob
 
 STOPSIGNAL SIGKILL
 #printenv > /etc/environment &&
-CMD cron -f && docker-php-entrypoint php-fpm
+# Debian cron daemonizes itself; exec hands PID 1 to php-fpm (with `cron -f`
+# in front, the foreground cron blocked and php-fpm never started).
+CMD ["sh", "-c", "cron && exec docker-php-entrypoint php-fpm"]
