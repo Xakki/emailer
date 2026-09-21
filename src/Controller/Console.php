@@ -30,31 +30,28 @@ class Console extends AbstractController
     }
 
     /**
-     * Shared send/reSend loop: $factory selects the next row (throwing
-     * DataNotFound with httpCode 0 when the queue is drained).
+     * Shared send/reSend loop. Each row is claimed (marked RUN) in its own
+     * short transaction, then processed by handler() outside any transaction:
+     * SMTP I/O never runs while a DB transaction or row lock is held.
      *
-     * @param callable(): AbstractQueue $factory
+     * @param callable(): AbstractQueue $factory Selects the next row (FOR UPDATE);
+     *     throws DataNotFound with httpCode 0 when the queue is drained.
      */
     private function processQueue(callable $factory, int $repeat): string
     {
         $info = [];
-        $stopFlag = false;
         for ($i = 0; $i < $repeat; $i++) {
-            $db = $this->emailer->getDb();
-            $db->beginTransaction();
+            $stopFlag = false;
             try {
-                $status = $factory()->handler();
+                $status = $this->claim($factory)->handler();
                 $mess = Queue::TITLE_QUEUE_STATUS[$status];
-                $db->commit();
             } catch (DataNotFound $e) {
-                $db->rollBack();
                 if ($e->httpCode === 0) {
                     break;
                 }
                 throw $e;
             } catch (\Throwable $e) {
                 $this->logger->error($e);
-                $db->rollBack();
                 $mess = $e->getMessage();
                 $stopFlag = true;
             }
@@ -67,6 +64,24 @@ class Console extends AbstractController
             }
         }
         return 'Statuses: ' . var_export($info, true);
+    }
+
+    /**
+     * @param callable(): AbstractQueue $factory
+     */
+    private function claim(callable $factory): AbstractQueue
+    {
+        $db = $this->emailer->getDb();
+        $db->beginTransaction();
+        try {
+            $job = $factory();
+            $job->claim();
+            $db->commit();
+        } catch (\Throwable $e) {
+            $db->rollBack();
+            throw $e;
+        }
+        return $job;
     }
 
     protected function actionNewDay(): string

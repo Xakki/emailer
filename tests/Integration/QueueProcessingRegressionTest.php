@@ -34,6 +34,12 @@ class QueueProcessingRegressionTest extends IntegrationCase
         ]);
     }
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        QueueRegressionTransport::$deliveries = 0;
+    }
+
     public function testSendWithEmptyQueueLeavesNoActiveTransactionAfterOneRollback(): void
     {
         $this->assertEmptyQueueActionClosesTransaction('send');
@@ -137,6 +143,62 @@ class QueueProcessingRegressionTest extends IntegrationCase
         ManualClock::$now = $retryAt4;
         self::assertSame(Model\Queue::QUEUE_STATUS_ERROR, (new ClockedRepeatQueue($this->emailer))->handler());
         $this->assertQueueState($queue->id, Model\Queue::QUEUE_STATUS_ERROR, 5);
+    }
+
+    /**
+     * SMTP I/O runs outside any DB transaction: the row is claimed (RUN,
+     * committed) before send(), so a DB failure after the server accepted the
+     * message can no longer roll the row back into the queue for a second
+     * delivery. The price is at-most-once: the row is stranded in RUN.
+     */
+    #[DataProvider('queueActions')]
+    public function testDeliveredMailIsNotSentAgainWhenTheResultWriteFails(string $action, int $status): void
+    {
+        $queue = $this->createQueue($status, 1, 0, 'countDelivery');
+        $this->makeDue($queue);
+        $this->db->executeStatement(
+            'CREATE TRIGGER fail_result BEFORE UPDATE OF status ON queue WHEN NEW.status IN (2, -20) '
+            . "BEGIN SELECT RAISE(ABORT, 'simulated DB outage after SMTP accepted the message'); END"
+        );
+
+        $first = (new Console($this->emailer))->{$action}();
+        self::assertSame(1, QueueRegressionTransport::$deliveries, $first);
+        self::assertStringContainsString('simulated DB outage', $first);
+        $this->assertQueueState($queue->id, Model\Queue::QUEUE_STATUS_RUN, 1);
+
+        $this->db->executeStatement('DROP TRIGGER fail_result');
+        $second = (new Console($this->emailer))->{$action}();
+
+        self::assertSame(1, QueueRegressionTransport::$deliveries, "run1: $first\nrun2: $second");
+        $this->assertQueueState($queue->id, Model\Queue::QUEUE_STATUS_RUN, 1);
+    }
+
+    /**
+     * Only the bookkeeping after a delivery failed (campaign counter): the
+     * row is still recorded as sent, never re-queued and never left in RUN.
+     */
+    public function testDeliveredMailIsRecordedAsSentWhenOnlyTheCountersFail(): void
+    {
+        $queue = $this->createQueue(Model\Queue::QUEUE_STATUS_NEW, 0, 0, 'countDelivery');
+        $this->db->executeStatement(
+            'CREATE TRIGGER fail_counter BEFORE UPDATE OF cnt_send ON campaign '
+            . "BEGIN SELECT RAISE(ABORT, 'simulated lock wait on the campaign counter'); END"
+        );
+
+        $out = (new Console($this->emailer))->send();
+
+        self::assertSame("Statuses: array (\n  'success' => 1,\n)", $out);
+        self::assertSame(1, QueueRegressionTransport::$deliveries);
+        $this->assertQueueState($queue->id, Model\Queue::QUEUE_STATUS_SUCCESS, 0);
+    }
+
+    /**
+     * @return iterable<string, array{string, int}>
+     */
+    public static function queueActions(): iterable
+    {
+        yield 'send (NEW row)' => ['send', Model\Queue::QUEUE_STATUS_NEW];
+        yield 'reSend (due TEMP_ERROR row)' => ['reSend', Model\Queue::QUEUE_STATUS_TEMP_ERROR];
     }
 
     #[DataProvider('backlogRowsThatMustNeverBeAutoRetried')]
@@ -272,6 +334,12 @@ class QueueProcessingRegressionTest extends IntegrationCase
         return $queue;
     }
 
+    private function makeDue(Model\Queue $queue): void
+    {
+        $queue->retry_at = '2000-01-01 00:00:00';
+        $queue->update(['retry_at']);
+    }
+
     private function insertQueue(int $status, int $retry, ?string $retryAt = null): void
     {
         Repository\Queue::insert([
@@ -364,6 +432,7 @@ final class QueueRegressionConnection extends Connection
 
 final class QueueRegressionTransport extends AbstractTransport
 {
+    public static int $deliveries = 0;
     public int $result = 0;
     public string $failure = '';
 
@@ -379,12 +448,19 @@ final class QueueRegressionTransport extends AbstractTransport
             // unlike the 'authentication' case above), and now returns
             // QUEUE_STATUS_TEMP_ERROR for SMTP auth failures.
             'smtpAuthentication' => $this->getSmtpErrorStatus('SMTP Error: Could not authenticate.'),
+            'countDelivery' => $this->deliver(),
             default => $this->result,
         };
     }
 
     public function validate(): void
     {
+    }
+
+    private function deliver(): int
+    {
+        self::$deliveries++;
+        return 0;
     }
 
     private function render(Model\Queue $queue): int
