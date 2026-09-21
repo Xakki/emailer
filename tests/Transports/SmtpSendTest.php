@@ -23,19 +23,19 @@ class SmtpSendTest extends TestCase
     public static function deliveryErrors(): array
     {
         return [
-            'authentication remains terminal' => [
+            'authentication goes through backoff' => [
                 'SMTP Error: Could not authenticate.',
-                Queue::QUEUE_STATUS_ERROR,
+                Queue::QUEUE_STATUS_TEMP_ERROR,
                 'SMTP Error: Could not authenticate.',
             ],
-            'could not authenticate with temporary remains terminal' => [
+            'could not authenticate with temporary goes through backoff' => [
                 'SMTP Error: Could not authenticate because of a temporary authentication failure.',
-                Queue::QUEUE_STATUS_ERROR,
+                Queue::QUEUE_STATUS_TEMP_ERROR,
                 'SMTP Error: Could not authenticate because of a temporary authentication failure.',
             ],
-            'authentication failure with temporary remains terminal' => [
+            'authentication failure with temporary goes through backoff' => [
                 'SMTP Error: Authentication failed because of a temporary credential failure.',
-                Queue::QUEUE_STATUS_ERROR,
+                Queue::QUEUE_STATUS_TEMP_ERROR,
                 'SMTP Error: Authentication failed because of a temporary credential failure.',
             ],
             'generic temporary connection error is temporary' => [

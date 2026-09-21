@@ -106,3 +106,13 @@ test-ci-filter:
 	$(docker) run --rm -v "$(CURDIR)":/app -w /app emailer-test:8.5 \
 		sh -c "vendor/bin/phpunit -c phpunit.xml --filter '$(filter)'"
 
+## Same throwaway-container runner as test-ci, for the static-analysis gates
+## (no long-lived `emailer-php`/`emailer-mariadb` stack needed).
+test-ci-phpstan:
+	$(docker) run --rm -v "$(CURDIR)":/app -w /app emailer-test:8.5 \
+		sh -c "composer install --no-interaction --prefer-dist --no-progress && vendor/bin/phpstan analyse --memory-limit 1G"
+
+test-ci-cs-check:
+	$(docker) run --rm -v "$(CURDIR)":/app -w /app emailer-test:8.5 \
+		sh -c "composer install --no-interaction --prefer-dist --no-progress && vendor/bin/phpcs"
+

@@ -97,6 +97,48 @@ class QueueProcessingRegressionTest extends IntegrationCase
         $this->assertRepeatQueueEmpty();
     }
 
+    /**
+     * SMTP authentication failures (classified by the transport's own
+     * getSmtpErrorStatus(), not a thrown exception) must enter the same
+     * geometric backoff as any other temporary failure instead of going
+     * straight to terminal on attempt 1 — this incident's own root cause.
+     * Walks the same 5-attempt schedule as the generic test above, but via
+     * a transport whose send() returns getSmtpErrorStatus('Could not
+     * authenticate') on every attempt.
+     */
+    public function testSmtpAuthenticationFailureEntersBackoffAndWalksToTerminal(): void
+    {
+        $queue = $this->createQueue(Model\Queue::QUEUE_STATUS_NEW, 0, 0, 'smtpAuthentication');
+
+        $now = new \DateTimeImmutable('2026-01-01 00:00:00');
+        ManualClock::$now = $now;
+
+        self::assertSame(Model\Queue::QUEUE_STATUS_TEMP_ERROR, (new ClockedExecuteQueue($this->emailer))->handler());
+        $this->assertQueueState($queue->id, Model\Queue::QUEUE_STATUS_TEMP_ERROR, 1);
+        $retryAt1 = $this->assertRetryAtDelta($queue->id, $now, 900);
+
+        ManualClock::$now = $retryAt1;
+        self::assertSame(Model\Queue::QUEUE_STATUS_TEMP_ERROR, (new ClockedRepeatQueue($this->emailer))->handler());
+        $this->assertQueueState($queue->id, Model\Queue::QUEUE_STATUS_TEMP_ERROR, 2);
+        $retryAt2 = $this->assertRetryAtDelta($queue->id, $retryAt1, 4121);
+
+        ManualClock::$now = $retryAt2;
+        self::assertSame(Model\Queue::QUEUE_STATUS_TEMP_ERROR, (new ClockedRepeatQueue($this->emailer))->handler());
+        $this->assertQueueState($queue->id, Model\Queue::QUEUE_STATUS_TEMP_ERROR, 3);
+        $retryAt3 = $this->assertRetryAtDelta($queue->id, $retryAt2, 18869);
+
+        ManualClock::$now = $retryAt3;
+        self::assertSame(Model\Queue::QUEUE_STATUS_TEMP_ERROR, (new ClockedRepeatQueue($this->emailer))->handler());
+        $this->assertQueueState($queue->id, Model\Queue::QUEUE_STATUS_TEMP_ERROR, 4);
+        $retryAt4 = $this->assertRetryAtDelta($queue->id, $retryAt3, 86400);
+
+        // Attempt 5: exhausted -> terminal QUEUE_STATUS_ERROR, same as any other
+        // exhausted TEMP_ERROR backoff. Never a bare terminal on attempt 1.
+        ManualClock::$now = $retryAt4;
+        self::assertSame(Model\Queue::QUEUE_STATUS_ERROR, (new ClockedRepeatQueue($this->emailer))->handler());
+        $this->assertQueueState($queue->id, Model\Queue::QUEUE_STATUS_ERROR, 5);
+    }
+
     #[DataProvider('backlogRowsThatMustNeverBeAutoRetried')]
     public function testRepeatQueueNeverSelectsLegacyOrNotYetDueRows(
         int $status,
@@ -138,14 +180,21 @@ class QueueProcessingRegressionTest extends IntegrationCase
     }
 
     /**
+     * NOT the SMTP-auth-failure case: this is a Validation exception thrown by
+     * (escaping) the transport, caught by AbstractQueue's outer catch(\Throwable)
+     * safety net, which is always terminal by design. Real SMTP auth failures
+     * are caught inside Smtp::send() and classified by getSmtpErrorStatus() —
+     * see SmtpSendTest and testSmtpAuthenticationFailureEntersBackoffAndWalksToTerminal
+     * above, which now go through backoff instead.
+     *
      * @return iterable<string, array{string}>
      */
     public static function terminalFailures(): iterable
     {
-        yield 'authentication' => ['authentication'];
-        yield 'configuration' => ['configuration'];
-        yield 'rendering' => ['rendering'];
-        yield 'unknown throwable' => ['unknown'];
+        yield 'transport throws Validation (authentication)' => ['authentication'];
+        yield 'transport throws Validation (configuration)' => ['configuration'];
+        yield 'transport throws Validation (rendering)' => ['rendering'];
+        yield 'transport throws unknown throwable' => ['unknown'];
     }
 
     private function assertEmptyQueueActionClosesTransaction(string $action): void
@@ -325,6 +374,11 @@ final class QueueRegressionTransport extends AbstractTransport
             'configuration' => throw new EmailerException('Configuration failed'),
             'rendering' => $this->render($queue),
             'unknown' => throw new \RuntimeException('Unexpected failure'),
+            // Real production path: the transport's own getSmtpErrorStatus()
+            // classifies the PHPMailer error message (not a thrown exception,
+            // unlike the 'authentication' case above), and now returns
+            // QUEUE_STATUS_TEMP_ERROR for SMTP auth failures.
+            'smtpAuthentication' => $this->getSmtpErrorStatus('SMTP Error: Could not authenticate.'),
             default => $this->result,
         };
     }

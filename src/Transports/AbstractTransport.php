@@ -101,7 +101,7 @@ abstract class AbstractTransport implements \Stringable
     {
         foreach (['Could not authenticate', 'authentication failed', 'authentication failure'] as $authenticationFailure) {
             if (stripos($mess, $authenticationFailure) !== false) {
-                return Queue::QUEUE_STATUS_ERROR;
+                return Queue::QUEUE_STATUS_TEMP_ERROR;
             }
         }
 
