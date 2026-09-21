@@ -96,23 +96,27 @@ migrations-status:
 test-ci-build:
 	$(docker) build -f docker/ci/Dockerfile --build-arg PHP_VERSION=8.5 -t emailer-test:8.5 .
 
+## Throwaway CI container: CPU/memory capped (override CI_CPUS / CI_MEMORY) and
+## run as the invoking user so vendor/ and the caches stay owned by you; HOME
+## points composer's home/cache at the container's /tmp.
+CI_CPUS ?= 2
+CI_MEMORY ?= 2g
+ci-run = $(docker) run --rm --cpus $(CI_CPUS) --memory $(CI_MEMORY) --user "$$(id -u):$$(id -g)" \
+	-e HOME=/tmp -v "$(CURDIR)":/app -w /app emailer-test:8.5
+
 test-ci:
-	$(docker) run --rm -v "$(CURDIR)":/app -w /app emailer-test:8.5 \
-		sh -c "composer install --no-interaction --prefer-dist --no-progress && vendor/bin/phpunit -c phpunit.xml"
+	$(ci-run) sh -c "composer install --no-interaction --prefer-dist --no-progress && vendor/bin/phpunit -c phpunit.xml"
 
 ## make test-ci-filter filter=testSomething — same runner, one test/pattern (fast
 ## red/green checks; vendor/ already installed by a prior test-ci run so this skips it).
 test-ci-filter:
-	$(docker) run --rm -v "$(CURDIR)":/app -w /app emailer-test:8.5 \
-		sh -c "vendor/bin/phpunit -c phpunit.xml --filter '$(filter)'"
+	$(ci-run) sh -c "vendor/bin/phpunit -c phpunit.xml --filter '$(filter)'"
 
 ## Same throwaway-container runner as test-ci, for the static-analysis gates
 ## (no long-lived `emailer-php`/`emailer-mariadb` stack needed).
 test-ci-phpstan:
-	$(docker) run --rm -v "$(CURDIR)":/app -w /app emailer-test:8.5 \
-		sh -c "composer install --no-interaction --prefer-dist --no-progress && vendor/bin/phpstan analyse --memory-limit 1G"
+	$(ci-run) sh -c "composer install --no-interaction --prefer-dist --no-progress && vendor/bin/phpstan analyse --memory-limit 1G"
 
 test-ci-cs-check:
-	$(docker) run --rm -v "$(CURDIR)":/app -w /app emailer-test:8.5 \
-		sh -c "composer install --no-interaction --prefer-dist --no-progress && vendor/bin/phpcs"
+	$(ci-run) sh -c "composer install --no-interaction --prefer-dist --no-progress && vendor/bin/phpcs"
 
