@@ -103,14 +103,14 @@ abstract class AbstractQueue
             'project_id' => $this->queue->project_id,
         ];
         $delivered = false;
+        $log->debug('Run queue', $logParam);
         try {
-            $log->info('Run queue', $logParam);
-
             if (!$this->queue->isActiveSubscribe()) {
                 $this->writeResult(function (): void {
                     $this->queue->status = Queue::QUEUE_STATUS_UNSUBSCRIBE;
                     $this->queue->update(['status']);
                 });
+                $this->logOutcome($logParam);
                 return $this->queue->status;
             }
             if ($this->queue->status !== Queue::QUEUE_STATUS_RUN) {
@@ -140,8 +140,6 @@ abstract class AbstractQueue
                     $this->queue->updateLastError($transport->getError());
                 });
             }
-
-            $log->debug('Run queue', $logParam);
         } catch (\Throwable $e) {
             $log->error($e, $logParam);
             try {
@@ -171,7 +169,20 @@ abstract class AbstractQueue
                 throw $e;
             }
         }
+        $this->logOutcome($logParam);
         return $this->queue->status;
+    }
+
+    /**
+     * @param array<int|string, mixed> $logParam
+     */
+    private function logOutcome(array $logParam): void
+    {
+        $this->emailer->getLogger()->info('Send queue', $logParam + [
+            'status' => $this->queue->status,
+            'retry' => $this->queue->retry,
+            'retry_at' => $this->queue->retry_at,
+        ]);
     }
 
     private function getTransport(): Model\Transport
