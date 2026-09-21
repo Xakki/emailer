@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Xakki\Emailer\Transports;
 
+use PHPMailer\PHPMailer\Exception as PHPMailerException;
 use PHPMailer\PHPMailer\PHPMailer;
 use Xakki\Emailer\Cqrs\Domain\GetMxRecord;
 use Xakki\Emailer\Exception;
@@ -71,6 +72,11 @@ class Smtp extends AbstractTransport
         }
     }
 
+    protected function createPhpMailer(): PHPMailer
+    {
+        return new PHPMailer(true);
+    }
+
     /**
      * @param Model\Queue $queue
      * @return int
@@ -83,7 +89,7 @@ class Smtp extends AbstractTransport
         $this->errorMessage = '';
         $mail = $queue->getMail();
 
-        $phpMailer = new PHPMailer(true);
+        $phpMailer = $this->createPhpMailer();
         $phpMailer->XMailer = 'EmailService';
         $phpMailer->Timeout = 30;
         $startTime = time();
@@ -168,10 +174,24 @@ class Smtp extends AbstractTransport
             $phpMailer->addCustomHeader($k, $r);
         }
 
+        if (!$phpMailer->preSend()) {
+            throw new PHPMailerException($phpMailer->ErrorInfo ?: 'SMTP message preparation failed');
+        }
+
+        $html = '';
+        $deliveryBufferLevel = ob_get_level();
         ob_start();
-        $result = $phpMailer->send();
-        $phpMailer->smtpClose();
-        $html = ob_get_clean();
+        try {
+            $result = $phpMailer->postSend();
+        } catch (PHPMailerException $exception) {
+            $this->errorMessage = $phpMailer->ErrorInfo ?: $exception->getMessage() ?: 'SMTP delivery failed';
+            $result = false;
+        } finally {
+            $phpMailer->smtpClose();
+            if (ob_get_level() === $deliveryBufferLevel + 1) {
+                $html = (string) ob_get_clean();
+            }
+        }
 
         if ($html) {
             $html = preg_replace('/<br\/?>(\r\n|\n\r|\n|\r)?/ui', PHP_EOL, $html);
@@ -192,7 +212,7 @@ class Smtp extends AbstractTransport
             $this->emailer->getLogger()->notice('Slow', $logContext);
         }
         if (!$result) {
-            return $this->getSmtpErrorStatus($phpMailer->ErrorInfo);
+            return $this->getSmtpErrorStatus($this->errorMessage);
         }
 
         unset($phpMailer);

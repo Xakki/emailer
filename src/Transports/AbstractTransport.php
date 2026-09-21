@@ -99,6 +99,12 @@ abstract class AbstractTransport implements \Stringable
 
     public function getSmtpErrorStatus(string $mess): int
     {
+        foreach (['Could not authenticate', 'authentication failed', 'authentication failure'] as $authenticationFailure) {
+            if (stripos($mess, $authenticationFailure) !== false) {
+                return Queue::QUEUE_STATUS_ERROR;
+            }
+        }
+
         // https://yandex.ru/support/mail-new/web/letter/create.html
         // https://mail.qip.ru/support/
         // SPAM CHECK
