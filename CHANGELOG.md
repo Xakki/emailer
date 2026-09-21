@@ -49,8 +49,10 @@ follow [Semantic Versioning](https://semver.org/).
     lock wait timeout / lost connection) now go through the retry backoff
     instead of failing terminally on the first attempt; other exceptions stay
     terminal `ERROR`.
-  - After an SMTP authentication failure, the transport is paused for the rest
-    of the run: its other messages are left untouched, other transports continue.
+  - When a relay transport's SMTP connect, TLS or AUTH step fails, the transport
+    is paused for the rest of the run: its other messages are left untouched,
+    other transports continue. Rejections after login (MAIL FROM / RCPT / DATA)
+    never pause it, even when their text mentions authentication.
   - Each message is claimed (`RUN`) in a short transaction and sent outside any
     transaction (no DB lock held during the SMTP dialogue). Delivery is
     **at most once**: a crash or a failed result write leaves the row in `RUN`

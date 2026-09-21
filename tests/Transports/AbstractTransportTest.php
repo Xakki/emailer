@@ -45,44 +45,38 @@ class AbstractTransportTest extends TestCase
     /**
      * The authentication phrases are a fallback after the classification table:
      * a recipient-side rejection that merely mentions "authentication failed"
-     * (DMARC/SPF) keeps its SPAM / INVALID_* verdict and is not an auth failure.
+     * (DMARC/SPF) keeps its SPAM / INVALID_* verdict. Text alone never marks
+     * the transport as down: only a failed connect / login does (Smtp::send()).
      */
     #[DataProvider('authenticationPhraseMessages')]
-    public function testAuthenticationPhraseDoesNotOverrideTheClassificationTable(
-        string $message,
-        int $status,
-        bool $authenticationFailure,
-    ): void {
+    public function testAuthenticationPhraseDoesNotOverrideTheClassificationTable(string $message, int $status): void
+    {
         $transport = new Transports\Smtp($this->mockEmailerSuccess());
 
         self::assertSame($status, $transport->getSmtpErrorStatus($message));
-        self::assertSame($authenticationFailure, $transport->isAuthenticationFailure());
+        self::assertFalse($transport->isConnectionFailure());
     }
 
     /**
-     * @return iterable<string, array{string, int, bool}>
+     * @return iterable<string, array{string, int}>
      */
     public static function authenticationPhraseMessages(): iterable
     {
         yield 'DMARC rejection stays SPAM' => [
             'SMTP Error: data not accepted. SMTP server error: 550 5.7.1 Message rejected as SPAM: DMARC authentication failed',
             Queue::QUEUE_STATUS_SPAM,
-            false,
         ];
         yield 'unknown recipient stays INVALID_MAIL' => [
             'SMTP Error: The following recipients failed: foo@example.com: 550 5.1.1 User unknown (SPF authentication failed)',
             Queue::QUEUE_STATUS_INVALID_MAIL,
-            false,
         ];
         yield 'PHPMailer AUTH failure with server detail' => [
             'SMTP Error: Could not authenticate. SMTP server error: AUTH command failed Detail: Authentication failed SMTP code: 535',
             Queue::QUEUE_STATUS_TEMP_ERROR,
-            true,
         ];
         yield 'bare PHPMailer AUTH failure' => [
             'SMTP Error: Could not authenticate.',
             Queue::QUEUE_STATUS_TEMP_ERROR,
-            true,
         ];
     }
 }

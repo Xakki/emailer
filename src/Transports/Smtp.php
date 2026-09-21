@@ -72,9 +72,20 @@ class Smtp extends AbstractTransport
         }
     }
 
-    protected function createPhpMailer(): PHPMailer
+    protected function createPhpMailer(): SmtpMailer
     {
-        return new PHPMailer(true);
+        return new SmtpMailer(true);
+    }
+
+    /**
+     * MX hosts of the recipient's domain for direct delivery (HOST_LOCAL);
+     * overridable by tests, like createPhpMailer().
+     *
+     * @return array<int, string>
+     */
+    protected function findMx(string $domain): array
+    {
+        return (new GetMxRecord($domain))->handler();
     }
 
     /**
@@ -87,6 +98,7 @@ class Smtp extends AbstractTransport
     public function send(Model\Queue $queue): int
     {
         $this->errorMessage = '';
+        $this->connectionFailure = false;
         $mail = $queue->getMail();
 
         $phpMailer = $this->createPhpMailer();
@@ -115,7 +127,7 @@ class Smtp extends AbstractTransport
             }
 
             $domain = explode('@', $mail->getEmail());
-            $mx = (new GetMxRecord($domain[1]))->handler();
+            $mx = $this->findMx($domain[1]);
             if ($mx) {
                 $phpMailer->Host = implode(';', $mx);
             }
@@ -182,6 +194,16 @@ class Smtp extends AbstractTransport
         $deliveryBufferLevel = ob_get_level();
         ob_start();
         try {
+            try {
+                $phpMailer->connect();
+            } catch (PHPMailerException $exception) {
+                // Connect / TLS / AUTH failed before anything was handed over:
+                // the relay or its credentials are unusable for every message of
+                // this transport. Direct delivery (HOST_LOCAL) connects to the
+                // recipient's own MX, whose failure says nothing about the rest.
+                $this->connectionFailure = $this->host !== self::HOST_LOCAL;
+                throw $exception;
+            }
             $result = $phpMailer->postSend();
         } catch (PHPMailerException $exception) {
             $this->errorMessage = $phpMailer->ErrorInfo ?: $exception->getMessage() ?: 'SMTP delivery failed';

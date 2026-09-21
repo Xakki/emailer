@@ -30,7 +30,7 @@ abstract class AbstractQueue
     protected Queue $queue;
     protected Emailer $emailer;
     private ?Model\Transport $transportModel = null;
-    private bool $transportAuthenticationFailure = false;
+    private bool $transportConnectionFailure = false;
 
     /**
      * Selects the next row to process (FOR UPDATE), skipping the given row and
@@ -61,12 +61,13 @@ abstract class AbstractQueue
     }
 
     /**
-     * Whether handler() failed because the transport rejected SMTP
-     * authentication — a transport-wide failure, not a per-message one.
+     * Whether handler() failed while connecting to / logging in to the
+     * transport's SMTP relay (connect, TLS, AUTH) — a transport-wide failure,
+     * not a per-message one (see AbstractTransport::isConnectionFailure()).
      */
-    public function isTransportAuthenticationFailure(): bool
+    public function isTransportConnectionFailure(): bool
     {
-        return $this->transportAuthenticationFailure;
+        return $this->transportConnectionFailure;
     }
 
     /**
@@ -123,7 +124,7 @@ abstract class AbstractQueue
 
             $transport = $transportModel->getSmtpTransport($this->emailer);
             $status = $transport->send($this->queue);
-            $this->transportAuthenticationFailure = $transport->isAuthenticationFailure();
+            $this->transportConnectionFailure = $transport->isConnectionFailure();
 
             if (!$status) {
                 $delivered = true;

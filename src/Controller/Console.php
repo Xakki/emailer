@@ -50,8 +50,9 @@ class Console extends AbstractController
      * short transaction, then processed by handler() outside any transaction:
      * SMTP I/O never runs while a DB transaction or row lock is held.
      *
-     * After an SMTP authentication failure the row's transport is paused for
-     * the rest of this run; skipped rows do not count against $repeat.
+     * After a failure to connect to / log in to the SMTP relay, the row's
+     * transport is paused for the rest of this run; skipped rows do not count
+     * against $repeat.
      *
      * @param callable(TransportPause): AbstractQueue $factory Selects the next
      *     row (FOR UPDATE); throws DataNotFound with httpCode 0 when drained.
@@ -67,7 +68,7 @@ class Console extends AbstractController
                 $status = $job->handler();
                 $mess = Queue::TITLE_QUEUE_STATUS[$status] ?? 'unknown';
                 $transport = $job->findTransport();
-                if ($transport && $job->isTransportAuthenticationFailure()) {
+                if ($transport && $job->isTransportConnectionFailure()) {
                     $pause->pause($transport);
                 }
             } catch (DataNotFound $e) {

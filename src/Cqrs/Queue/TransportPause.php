@@ -7,11 +7,12 @@ namespace Xakki\Emailer\Cqrs\Queue;
 use Xakki\Emailer\Model;
 
 /**
- * Per-run transport breaker for Console send/reSend. Once a transport fails
- * SMTP authentication, the rest of its rows are left untouched (keeping their
- * NEW / TEMP_ERROR + retry_at state) until the next run: one AUTH attempt per
- * transport per tick instead of one per row, which would otherwise hammer the
- * provider and risk an account lockout.
+ * Per-run transport breaker for Console send/reSend. Once a transport fails to
+ * connect or log in (AbstractTransport::isConnectionFailure()), the rest of its
+ * rows are left untouched (keeping their NEW / TEMP_ERROR + retry_at state)
+ * until the next run: one AUTH attempt per transport per tick instead of one
+ * per row, which would otherwise hammer the provider and risk an account
+ * lockout.
  */
 final class TransportPause
 {

@@ -779,9 +779,14 @@ final class QueueRegressionTransport extends AbstractTransport
         return PdoDriverException::new(new \PDOException($message));
     }
 
+    /**
+     * What Smtp::send() reports when AUTH fails at login: the text classifies
+     * the row, the connect-phase flag pauses the transport.
+     */
     private function failAuthentication(): int
     {
         self::$deliveries++;
+        $this->connectionFailure = true;
         return $this->getSmtpErrorStatus('SMTP Error: Could not authenticate.');
     }
 
