@@ -36,9 +36,10 @@ RUN docker-php-source delete && apt-get autoremove --purge -y && apt-get autocle
 
 RUN echo "access.log = /dev/null" >> /usr/local/etc/php-fpm.d/docker.conf
 
-COPY cronjob /etc/cron.d/
-RUN chmod 0644 /etc/cron.d/cronjob
-RUN crontab /etc/cron.d/cronjob
+# A user crontab (no user field), so it must stay out of /etc/cron.d, whose
+# system-crontab format would reject every line ("bad username").
+COPY cronjob /etc/emailer.crontab
+RUN chmod 0644 /etc/emailer.crontab && crontab /etc/emailer.crontab
 
 # SIGQUIT = php-fpm's graceful stop: in-flight requests finish first.
 STOPSIGNAL SIGQUIT
