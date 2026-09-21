@@ -226,6 +226,31 @@ class QueueProcessingRegressionTest extends IntegrationCase
     }
 
     /**
+     * Every status a row can end in has a title (SPAM was missing: Undefined
+     * array key -4 on the reSend path), and an unmapped one falls back.
+     */
+    #[DataProvider('resultTitles')]
+    public function testConsoleReportsATitleForEveryResultStatus(int $result, string $title): void
+    {
+        $queue = $this->createQueue(Model\Queue::QUEUE_STATUS_TEMP_ERROR, 1, $result);
+        $this->makeDue($queue);
+
+        self::assertSame(
+            "Statuses: array (\n  '" . $title . "' => 1,\n)",
+            (new Console($this->emailer))->reSend(),
+        );
+    }
+
+    /**
+     * @return iterable<string, array{int, string}>
+     */
+    public static function resultTitles(): iterable
+    {
+        yield 'spam' => [Model\Queue::QUEUE_STATUS_SPAM, 'spam'];
+        yield 'unmapped status' => [7, 'unknown'];
+    }
+
+    /**
      * @return iterable<string, array{string, int}>
      */
     public static function queueActions(): iterable

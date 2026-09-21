@@ -32,6 +32,7 @@ class Queue extends AbstractModel
         self::QUEUE_STATUS_UNSUBSCRIBE => 'unsubscribe',
         self::QUEUE_STATUS_SKIP => 'skip',
         self::QUEUE_STATUS_QUOTA => 'quota',
+        self::QUEUE_STATUS_SPAM => 'spam',
         self::QUEUE_STATUS_INVALID_MAIL => 'invalid email',
         self::QUEUE_STATUS_INVALID_SMTP => 'invalid smtp',
         self::QUEUE_STATUS_INVALID_DOMAIN => 'invalid domain',

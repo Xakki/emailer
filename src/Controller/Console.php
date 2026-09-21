@@ -44,7 +44,7 @@ class Console extends AbstractController
             $stopFlag = false;
             try {
                 $status = $this->claim($factory)->handler();
-                $mess = Queue::TITLE_QUEUE_STATUS[$status];
+                $mess = Queue::TITLE_QUEUE_STATUS[$status] ?? 'unknown';
             } catch (DataNotFound $e) {
                 if ($e->httpCode === 0) {
                     break;
