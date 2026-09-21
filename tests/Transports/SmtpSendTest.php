@@ -18,50 +18,62 @@ use Xakki\Emailer\Transports\Smtp;
 class SmtpSendTest extends TestCase
 {
     /**
-     * @return array<string, array{string, int, string}>
+     * The authentication rows deliberately avoid every classification-table key
+     * ('temporary', 'SMTP server error', ...): they must reach TEMP_ERROR through
+     * the authentication fallback alone, one row per phrase.
+     *
+     * @return array<string, array{string, int, string, bool}>
      */
     public static function deliveryErrors(): array
     {
         return [
-            'authentication goes through backoff' => [
+            'could not authenticate goes through backoff' => [
                 'SMTP Error: Could not authenticate.',
                 Queue::QUEUE_STATUS_TEMP_ERROR,
                 'SMTP Error: Could not authenticate.',
+                true,
             ],
-            'could not authenticate with temporary goes through backoff' => [
-                'SMTP Error: Could not authenticate because of a temporary authentication failure.',
+            'authentication failed goes through backoff' => [
+                'SMTP Error: 535 5.7.8 Authentication failed',
                 Queue::QUEUE_STATUS_TEMP_ERROR,
-                'SMTP Error: Could not authenticate because of a temporary authentication failure.',
+                'SMTP Error: 535 5.7.8 Authentication failed',
+                true,
             ],
-            'authentication failure with temporary goes through backoff' => [
-                'SMTP Error: Authentication failed because of a temporary credential failure.',
+            'authentication failure goes through backoff' => [
+                'SMTP Error: 535 Authentication failure',
                 Queue::QUEUE_STATUS_TEMP_ERROR,
-                'SMTP Error: Authentication failed because of a temporary credential failure.',
+                'SMTP Error: 535 Authentication failure',
+                true,
             ],
             'generic temporary connection error is temporary' => [
                 'SMTP Error: temporary connection failure',
                 Queue::QUEUE_STATUS_TEMP_ERROR,
                 'SMTP Error: temporary connection failure',
+                false,
             ],
             'connection refused is temporary' => [
                 'SMTP Error: Connection refused',
                 Queue::QUEUE_STATUS_TEMP_ERROR,
                 'SMTP Error: Connection refused',
+                false,
             ],
             'connection timeout is temporary' => [
                 'SMTP Error: Connection timed out',
                 Queue::QUEUE_STATUS_TEMP_ERROR,
                 'SMTP Error: Connection timed out',
+                false,
             ],
             'unknown delivery error remains terminal' => [
                 'SMTP Error: delivery rejected',
                 Queue::QUEUE_STATUS_ERROR,
                 'SMTP Error: delivery rejected',
+                false,
             ],
             'generic exception becomes a safe terminal error' => [
                 '',
                 Queue::QUEUE_STATUS_ERROR,
                 'Generic delivery failure',
+                false,
             ],
         ];
     }
@@ -71,6 +83,7 @@ class SmtpSendTest extends TestCase
         string $errorInfo,
         int $expectedStatus,
         string $expectedError,
+        bool $authenticationFailure,
     ): void {
         $mailer = new DeliveryExceptionMailer($errorInfo);
         $smtp = $this->smtp($mailer);
@@ -80,6 +93,7 @@ class SmtpSendTest extends TestCase
         try {
             self::assertSame($expectedStatus, $smtp->send(new SmtpSendQueue(['id' => 1, 'email_id' => 1])));
             self::assertSame($expectedError, $smtp->getError());
+            self::assertSame($authenticationFailure, $smtp->isAuthenticationFailure());
             self::assertTrue($mailer->closed);
             self::assertSame($outerBufferLevel + 1, ob_get_level());
             self::assertSame('', ob_get_contents());
@@ -109,15 +123,23 @@ class SmtpSendTest extends TestCase
         }
     }
 
+    /**
+     * A message that cannot be prepared (preSend() fails) propagates as an
+     * exception and never reaches the SMTP delivery step.
+     */
     public function testPreDeliveryPhpMailerExceptionPropagates(): void
     {
-        $smtp = $this->smtp(new DeliveryExceptionMailer(''));
-        $smtp->fromEmail = 'not an email address';
+        $mailer = new PreSendFailureMailer();
+        $smtp = $this->smtp($mailer);
 
-        $this->expectException(PHPMailerException::class);
-        $this->expectExceptionMessage('Invalid address');
-
-        $smtp->send(new SmtpSendQueue(['id' => 1, 'email_id' => 1]));
+        try {
+            $smtp->send(new SmtpSendQueue(['id' => 1, 'email_id' => 1]));
+            self::fail('A preSend() failure must propagate.');
+        } catch (PHPMailerException $e) {
+            self::assertSame('Message body empty', $e->getMessage());
+        }
+        self::assertTrue($mailer->preSendCalled);
+        self::assertFalse($mailer->postSendCalled);
     }
 
     private function smtp(PHPMailer $mailer): TestSmtp
@@ -168,6 +190,30 @@ class DeliveryExceptionMailer extends PHPMailer
     public function smtpClose(): void
     {
         $this->closed = true;
+    }
+}
+
+class PreSendFailureMailer extends PHPMailer
+{
+    public bool $preSendCalled = false;
+    public bool $postSendCalled = false;
+
+    public function __construct()
+    {
+        parent::__construct(true);
+    }
+
+    public function preSend()
+    {
+        $this->preSendCalled = true;
+        $this->ErrorInfo = 'Message body empty';
+        return false;
+    }
+
+    public function postSend()
+    {
+        $this->postSendCalled = true;
+        return true;
     }
 }
 
