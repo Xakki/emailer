@@ -1,5 +1,9 @@
 SHELL = /bin/sh
 
+## Committed defaults first, local overrides second; `make VAR=...` beats both.
+-include .env_dist
+-include .env
+
 docker := $(shell command -v docker 2> /dev/null)
 docker-compose:= docker compose
 
@@ -66,11 +70,6 @@ swagger-generate:
 		/app/Controller/Api --output swagger.json
 
 ## https://github.com/swagger-api/swagger-ui/blob/master/docs/usage/installation.md
-## No host port: served by the stack's nginx at /api-docs/ (needs `make up`).
-## CPU/memory capped (override SWAGGER_UI_CPUS / SWAGGER_UI_MEMORY); the image
-## runs fine as the invoking user. src/ is bind-mounted read-only.
-SWAGGER_UI_CPUS ?= 0.5
-SWAGGER_UI_MEMORY ?= 128m
 swagger-ui:
 	$(docker) run --rm --cpus $(SWAGGER_UI_CPUS) --memory $(SWAGGER_UI_MEMORY) --user "$$(id -u):$$(id -g)" \
 		--name uni-swagger --network default-network -e BASE_URL=/api-docs \
@@ -100,16 +99,7 @@ migrations-create:
 migrations-status:
 	$(php) sh -l -c "./console migrations status"
 
-## Non-interactive test runner: builds the CI image (docker/ci/Dockerfile, same
-## one .github/workflows/ci.yml uses) and runs composer install + phpunit inside
-## a throwaway container. No `emailer-php`/`emailer-mariadb` service needed —
-## the suite is unit tests + SQLite in-memory integration tests only. Use this
-## instead of `phpunit` (which needs the long-lived docker-compose stack up).
-## Build steps are capped via BuildKit's `--resource` (sets the RUN containers'
-## cgroup memory.max / cpu.max; needs a buildx that has the flag). cpu-quota is
-## in µs per 100 ms period: 200000 = 2 CPUs.
-CI_BUILD_CPU_QUOTA ?= 200000
-CI_BUILD_MEMORY ?= $(CI_MEMORY)
+## Non-interactive test runner
 test-ci-build:
 	$(docker) build --resource memory=$(CI_BUILD_MEMORY) --resource cpu-quota=$(CI_BUILD_CPU_QUOTA) \
 		-f docker/ci/Dockerfile --build-arg PHP_VERSION=8.5 -t emailer-test:8.5 .
@@ -117,8 +107,7 @@ test-ci-build:
 ## Throwaway CI container: CPU/memory capped (override CI_CPUS / CI_MEMORY) and
 ## run as the invoking user so vendor/ and the caches stay owned by you; HOME
 ## points composer's home/cache at the container's /tmp.
-CI_CPUS ?= 2
-CI_MEMORY ?= 2g
+
 ci-run = $(docker) run --rm --cpus $(CI_CPUS) --memory $(CI_MEMORY) --user "$$(id -u):$$(id -g)" \
 	-e HOME=/tmp -v "$(CURDIR)":/app -w /app emailer-test:8.5
 
