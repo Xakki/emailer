@@ -2,6 +2,8 @@ parameters:
     parallel:
         processTimeout: 600.0
     level: 7
+    # Analyse against the supported floor, whatever PHP the runner happens to be.
+    phpVersion: 80400
     paths:
         - src
         - tests
