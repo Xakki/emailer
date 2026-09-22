@@ -85,4 +85,68 @@ class ConfigServiceTest extends TestCase
 
         self::assertSame(['max_attempts' => 3, 'first_delay' => 900, 'max_delay' => 86400], $config->retry);
     }
+
+    public function testSqlLogDefaultsToDebugWithoutParams(): void
+    {
+        self::assertSame(['level' => 'debug', 'params' => false], (new ConfigService())->sql_log);
+    }
+
+    public function testPartialSqlLogOverrideKeepsTheOtherDefault(): void
+    {
+        $config = new ConfigService(['sql_log' => ['params' => true]]);
+
+        self::assertSame(['level' => 'debug', 'params' => true], $config->sql_log);
+    }
+
+    /**
+     * @param array<string, mixed> $sqlLog
+     */
+    #[DataProvider('invalidSqlLogConfigs')]
+    public function testInvalidSqlLogConfigFailsAtConstruction(array $sqlLog, string $message): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage($message);
+
+        new ConfigService(['sql_log' => $sqlLog]);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, string}>
+     */
+    public static function invalidSqlLogConfigs(): iterable
+    {
+        yield 'unknown level' => [['level' => 'verbose'], 'sql_log.level must be one of'];
+        yield 'upper-case level' => [['level' => 'INFO'], 'sql_log.level must be one of'];
+        yield 'non-string level' => [['level' => 7], 'sql_log.level must be one of'];
+        yield 'non-bool string' => [['params' => 'maybe'], 'sql_log.params must be a boolean, string given'];
+        yield 'numeric string other than 0/1' => [['params' => '2'], 'sql_log.params must be a boolean, string given'];
+        yield 'int' => [['params' => 1], 'sql_log.params must be a boolean, int given'];
+        yield 'null' => [['params' => null], 'sql_log.params must be a boolean, null given'];
+    }
+
+    /**
+     * Env-sourced config arrives as strings: boolean-like ones (per
+     * FILTER_VALIDATE_BOOL) are stored as real bools.
+     */
+    #[DataProvider('sqlLogBoolStrings')]
+    public function testSqlLogParamsAcceptsBoolStrings(string $value, bool $expected): void
+    {
+        $config = new ConfigService(['sql_log' => ['level' => 'info', 'params' => $value]]);
+
+        self::assertSame(['level' => 'info', 'params' => $expected], $config->sql_log);
+    }
+
+    /**
+     * @return iterable<string, array{string, bool}>
+     */
+    public static function sqlLogBoolStrings(): iterable
+    {
+        yield '"1"' => ['1', true];
+        yield '"true"' => ['true', true];
+        yield '"0"' => ['0', false];
+        yield '"false"' => ['false', false];
+        yield '"off"' => ['off', false];
+        yield 'padded "true"' => [' true ', true];
+        yield 'empty string' => ['', false];
+    }
 }

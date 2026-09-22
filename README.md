@@ -75,7 +75,13 @@ $config = new ConfigService([
 | `route`      | built‑in tracking routes      | Phroute route → `[Controller, method]` map        |
 | `migration`  | `src/Migration`               | Doctrine Migrations config                        |
 | `retry`      | `max_attempts` 5, `first_delay` 900, `max_delay` 86400 | Backoff for temporary failures (see below); integers (integer numeric strings such as env values are cast), validated at construction |
+| `sql_log`    | `level` `debug`, `params` false | Logging of the SQL the repository layer runs: `level` is a lower-case PSR‑3 `LogLevel` value; `params: true` appends the bound values as JSON (`<sql> \| <json>`). Boolean-like strings (env `"1"`, `"true"`, `"0"`) are cast; validated at construction |
 | `secret_key` | `''` (disabled)               | Guards the read‑only body accessor                |
+
+> **`sql_log.params` puts bound values into your logs** — e‑mail addresses,
+> names and other personal data. Enable it only where the log sink is allowed
+> to hold that data (e.g. `'sql_log' => ['level' => 'info', 'params' => true]`
+> for debugging), and keep the default elsewhere.
 
 ## Usage
 

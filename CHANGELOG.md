@@ -25,6 +25,12 @@ follow [Semantic Versioning](https://semver.org/).
   Rows from before the migration keep `retry_at = NULL` and are never retried.
 - `Exception\CacheUnavailable` (extends `Exception\Exception`), thrown by
   `Emailer::getCache()` when Redis cannot be reached.
+- `sql_log` config: the level the repository layer logs its SQL at
+  (`level`, a PSR‑3 `LogLevel` value, default `debug`) and whether the bound
+  parameters are appended as JSON (`params`, default `false` →
+  `<sql> | <json>`; boolean-like env strings accepted). Validated at
+  construction. Defaults keep the previous output. `params: true` writes
+  e‑mail addresses and other personal data into the logs.
 
 ### Removed
 - Dropped the unmaintained `phroute/phroute` dependency; HTTP routing now uses a

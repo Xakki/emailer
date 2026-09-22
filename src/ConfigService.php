@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Xakki\Emailer;
 
+use Psr\Log\LogLevel;
+
 /**
  * @property-read array<string, mixed> $api
  * @property-read array<string, mixed> $db
@@ -11,6 +13,7 @@ namespace Xakki\Emailer;
  * @property-read array<string, mixed> $route
  * @property-read array<string, mixed> $migration
  * @property-read array<string, int> $retry
+ * @property-read array{level: string, params: bool} $sql_log
  * @property-read string $secret_key
  */
 class ConfigService
@@ -90,6 +93,25 @@ class ConfigService
     ];
 
     /**
+     * Logging of the SQL the repository layer runs (see
+     * Repository\AbstractRepository::logSql()). `level` is the PSR-3 level
+     * (a Psr\Log\LogLevel value, lower-case) the statement is logged at;
+     * `params` = true appends the bound parameters as JSON (`<sql> | <json>`) —
+     * they carry e-mail addresses and other personal data. Validated at
+     * construction; boolean-like strings (e.g. from env: "1", "true", "0",
+     * "off") are cast to bool via FILTER_VALIDATE_BOOL.
+     *
+     * snake_case for the same reason as $secret_key: it is the public config key.
+     *
+     * @var array<string,mixed> {level: string, params: bool} once validateSqlLog() has run
+     */
+    // phpcs:ignore WebimpressCodingStandard.NamingConventions.ValidVariableName.NotCamelCapsProperty
+    protected array $sql_log = [
+        'level' => LogLevel::DEBUG,
+        'params' => false,
+    ];
+
+    /**
      * Shared secret for the read-only /emailer/get test accessor.
      * Sourced from env SECRET_EMAILER_KEY (see wep Mail::getEmailer()).
      * Untyped on purpose: getenv() yields `false` when unset — absorbing it
@@ -122,6 +144,7 @@ class ConfigService
             }
         }
         $this->validateRetry();
+        $this->validateSqlLog();
     }
 
     /**
@@ -151,6 +174,45 @@ class ConfigService
             $this->retry['first_delay'],
             $this->retry['max_delay'],
         );
+    }
+
+    /**
+     * @throws \InvalidArgumentException
+     */
+    protected function validateSqlLog(): void
+    {
+        $levels = [
+            LogLevel::EMERGENCY,
+            LogLevel::ALERT,
+            LogLevel::CRITICAL,
+            LogLevel::ERROR,
+            LogLevel::WARNING,
+            LogLevel::NOTICE,
+            LogLevel::INFO,
+            LogLevel::DEBUG,
+        ];
+        $level = $this->sql_log['level'] ?? null;
+        if (!in_array($level, $levels, true)) {
+            throw new \InvalidArgumentException(sprintf(
+                'sql_log.level must be one of %s, %s given',
+                implode(', ', $levels),
+                is_string($level) ? '"' . $level . '"' : get_debug_type($level),
+            ));
+        }
+
+        $params = $this->sql_log['params'] ?? null;
+        // Env-sourced config is a string: FILTER_VALIDATE_BOOL maps "1"/"true"/
+        // "on"/"yes" and "0"/"false"/"off"/"no"/"" (trimmed), anything else fails.
+        if (is_string($params)) {
+            $params = filter_var($params, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE) ?? $params;
+        }
+        if (!is_bool($params)) {
+            throw new \InvalidArgumentException(sprintf(
+                'sql_log.params must be a boolean, %s given',
+                get_debug_type($params),
+            ));
+        }
+        $this->sql_log['params'] = $params;
     }
 
     /**
