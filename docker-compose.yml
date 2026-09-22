@@ -16,7 +16,6 @@ services:
             - DEBUG_MODE=${DEBUG_MODE}
             - APPLICATION_HOST=${APPLICATION_HOST}
             - EMAILER_API=${EMAILER_API}
-            - SWAGGER_UI=${SWAGGER_UI}
             - MARIADB_HOST=emailer-mariadb
             - MARIADB_PORT=3306
             - MARIADB_DATABASE=${MARIADB_DATABASE:-emailer}
