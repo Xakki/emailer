@@ -4,6 +4,8 @@ services:
         build:
             context: docker/${CFG_PHP:-php}
             dockerfile: Dockerfile
+            args:
+                PHP_VERSION: ${PHP_VERSION:-8.4}
         init: true
         container_name: emailer-php
         cpus: ${PHP_CPUS:-1}

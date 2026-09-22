@@ -1,5 +1,7 @@
 # Version: 0.1.0
-FROM php:8.2-fpm
+# Keep in step with composer.json's `php` floor; override per build/stand.
+ARG PHP_VERSION=8.4
+FROM php:${PHP_VERSION}-fpm
 MAINTAINER Xakki <xakki@ya.ru>
 ARG DEBIAN_FRONTEND=noninteractive
 ENV REFRESHED_AT="2023–01–05"
