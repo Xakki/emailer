@@ -4,6 +4,9 @@ SHELL = /bin/sh
 -include .env_dist
 -include .env
 
+## PHP for the test image and the dev stack; `make test-ci PHP_VERSION=8.5`.
+PHP_VERSION ?= 8.4
+
 docker := $(shell command -v docker 2> /dev/null)
 docker-compose:= docker compose
 
@@ -102,14 +105,14 @@ migrations-status:
 ## Non-interactive test runner
 test-ci-build:
 	$(docker) build --resource memory=$(CI_BUILD_MEMORY) --resource cpu-quota=$(CI_BUILD_CPU_QUOTA) \
-		-f docker/ci/Dockerfile --build-arg PHP_VERSION=8.5 -t emailer-test:8.5 .
+		-f docker/ci/Dockerfile --build-arg PHP_VERSION=$(PHP_VERSION) -t emailer-test:$(PHP_VERSION) .
 
 ## Throwaway CI container: CPU/memory capped (override CI_CPUS / CI_MEMORY) and
 ## run as the invoking user so vendor/ and the caches stay owned by you; HOME
 ## points composer's home/cache at the container's /tmp.
 
 ci-run = $(docker) run --rm --cpus $(CI_CPUS) --memory $(CI_MEMORY) --user "$$(id -u):$$(id -g)" \
-	-e HOME=/tmp -v "$(CURDIR)":/app -w /app emailer-test:8.5
+	-e HOME=/tmp -v "$(CURDIR)":/app -w /app emailer-test:$(PHP_VERSION)
 
 test-ci:
 	$(ci-run) sh -c "composer install --no-interaction --prefer-dist --no-progress && vendor/bin/phpunit -c phpunit.xml"
