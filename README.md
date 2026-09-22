@@ -212,7 +212,12 @@ make build
 make up
 ```
 
-See the [`Makefile`](Makefile) for `migrations-*`, `phpunit`, `phpstan`, `cs-*` targets.
+[`.env_dist`](.env_dist) holds the committed defaults for both `docker compose` and
+the `Makefile` (ports, container CPU/memory caps, `PHP_VERSION`); the Makefile reads
+`.env_dist` first and `.env` second, so a local `.env` wins and `make VAR=value` wins
+over both. Make consumes the values verbatim — leave them unquoted.
+
+See `make help` for the available targets.
 
 ## Development & quality
 
@@ -227,6 +232,18 @@ composer test-coverage # PHPUnit + HTML/text coverage (needs Xdebug or PCOV)
 composer phpstan       # PHPStan level 7 (src + tests)
 composer cs-check      # PSR-12 strict (squizlabs/php_codesniffer)
 composer cs-fix        # auto-fix style
+```
+
+Without a local PHP, the same gates run in a throwaway container built from
+[`docker/ci/Dockerfile`](docker/ci/Dockerfile). It defaults to PHP 8.4 — the
+supported floor, which is also what PHPStan and Composer resolve against — and
+`PHP_VERSION` switches it to the other matrix version:
+
+```bash
+make test-ci-build                  # PHP 8.4 image (emailer-test:8.4)
+make test-ci                        # composer install + PHPUnit
+make test-ci-build PHP_VERSION=8.5
+make test-ci PHP_VERSION=8.5
 ```
 
 Current line coverage is **~70%**. Tests live in [`tests/`](tests/) and split into

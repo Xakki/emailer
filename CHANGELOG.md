@@ -83,6 +83,13 @@ follow [Semantic Versioning](https://semver.org/).
 - Migration `Version20260922090000` drops the redundant `ix_queue_status`
   index (covered by `ix_queue_status_retry_at`).
 - Minimum PHP requirement raised to **>= 8.4**.
+- The whole tool‑chain now targets that floor: the dev image (`docker/php`) and the
+  test image (`docker/ci`) build `FROM php:8.4` (`PHP_VERSION` overrides both, e.g.
+  `make test-ci PHP_VERSION=8.5`, and the tag follows — `emailer-test:<version>`),
+  PHPStan analyses with `phpVersion: 80400`, and Composer resolves against
+  `config.platform.php = 8.4.0`.
+- `Makefile` reads `.env_dist` and then `.env`, so the container CPU/memory caps and
+  `PHP_VERSION` live in the env files; `make VAR=value` still wins over both.
 - Migrated from **doctrine/dbal 3 → 4** (and `doctrine/migrations` ^3.8), bumped
   PHPMailer/Monolog, replaced PHPUnit 10 with 11 and PHPStan 1 with 2.
 - Tests moved from `src/test/phpunit/` to `tests/` (namespace `Xakki\Emailer\Tests\`,
