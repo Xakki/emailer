@@ -66,13 +66,14 @@ swagger-generate:
 		/app/Controller/Api --output swagger.json
 
 ## https://github.com/swagger-api/swagger-ui/blob/master/docs/usage/installation.md
+## No host port: served by the stack's nginx at /api-docs/ (needs `make up`).
 ## CPU/memory capped (override SWAGGER_UI_CPUS / SWAGGER_UI_MEMORY); the image
 ## runs fine as the invoking user. src/ is bind-mounted read-only.
 SWAGGER_UI_CPUS ?= 0.5
 SWAGGER_UI_MEMORY ?= 128m
 swagger-ui:
 	$(docker) run --rm --cpus $(SWAGGER_UI_CPUS) --memory $(SWAGGER_UI_MEMORY) --user "$$(id -u):$$(id -g)" \
-		--name uni-swagger --network default-network -p 82:8181 \
+		--name uni-swagger --network default-network -e BASE_URL=/api-docs \
 		-e SWAGGER_JSON=/app/swagger.json -v "$(CURDIR)/src":/app:ro swaggerapi/swagger-ui
 
 cs-fix:
