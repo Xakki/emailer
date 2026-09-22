@@ -14,7 +14,6 @@ use Doctrine\DBAL\Exception\LockWaitTimeoutException;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Type;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Psr\Log\AbstractLogger;
 use Xakki\Emailer\ConfigService;
 use Xakki\Emailer\Controller\Console;
 use Xakki\Emailer\Cqrs;
@@ -28,6 +27,7 @@ use Xakki\Emailer\Mail;
 use Xakki\Emailer\Model;
 use Xakki\Emailer\Repository;
 use Xakki\Emailer\Tests\Support\IntegrationCase;
+use Xakki\Emailer\Tests\Support\RecordingLogger;
 use Xakki\Emailer\Tests\Support\TestEmailer;
 use Xakki\Emailer\Transports\AbstractTransport;
 
@@ -788,20 +788,6 @@ class QueueProcessingRegressionTest extends IntegrationCase
         $retryAt = new \DateTimeImmutable($row['retry_at']);
         self::assertSame($expectedSeconds, $retryAt->getTimestamp() - $from->getTimestamp());
         return $retryAt;
-    }
-}
-
-final class RecordingLogger extends AbstractLogger
-{
-    /** @var list<array{level: string, message: string, context: array<mixed>}> */
-    public array $records = [];
-
-    /**
-     * @param array<mixed> $context
-     */
-    public function log(mixed $level, string|\Stringable $message, array $context = []): void
-    {
-        $this->records[] = ['level' => (string) $level, 'message' => (string) $message, 'context' => $context];
     }
 }
 
