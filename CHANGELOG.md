@@ -29,8 +29,10 @@ follow [Semantic Versioning](https://semver.org/).
   (`level`, a PSR‑3 `LogLevel` value, default `debug`) and whether the bound
   parameters are appended as JSON (`params`, default `false` →
   `<sql> | <json>`; boolean-like env strings accepted). Validated at
-  construction. Defaults keep the previous output. `params: true` writes
-  e‑mail addresses and other personal data into the logs.
+  construction. Defaults keep the previous SQL output. `params` also gates
+  the INSERT / UPDATE log context (still `debug`): by default it now carries
+  the column names only, the values only with `params: true`. `params: true`
+  writes e‑mail addresses and other personal data into the logs.
 
 ### Removed
 - Dropped the unmaintained `phroute/phroute` dependency; HTTP routing now uses a

@@ -76,6 +76,20 @@ abstract class AbstractRepository
         $emailer->getLogger()->log($config['level'], $sql, [$tag]);
     }
 
+    /**
+     * Row / criteria values for the INSERT / UPDATE log context: the values
+     * with `sql_log.params`, otherwise only the column names (the values are
+     * personal data). Only `params` applies here — those lines keep their own
+     * debug level and message by design, `sql_log.level` is for SQL text.
+     *
+     * @param array<string, mixed> $values
+     * @return array<string, mixed>|list<string>
+     */
+    private static function loggedValues(array $values): array
+    {
+        return self::emailer()->getConfig()->sql_log['params'] ? $values : array_keys($values);
+    }
+
     protected static function getDb(): Connection
     {
         return self::emailer()->getDb();
@@ -135,7 +149,10 @@ abstract class AbstractRepository
             $id = $values[static::pkName()] ?? (int)static::getDb()->lastInsertId();
         }
 
-        self::emailer()->getLogger()->debug('INSERT INTO `' . static::tableName() . '` => #' . $id . '.', ['insert', 'data' => $values]);
+        self::emailer()->getLogger()->debug(
+            'INSERT INTO `' . static::tableName() . '` => #' . $id . '.',
+            ['insert', 'data' => self::loggedValues($values)]
+        );
 
         if (!$id) {
             throw new Exception\Exception('Cant insert data');
@@ -168,7 +185,10 @@ abstract class AbstractRepository
 
         $cnt = (int) static::getDb()->update(static::tableName(), $values, [static::pkName() => $id], $types);
 
-        self::emailer()->getLogger()->debug('UPDATE `' . static::tableName() . '` => affected rows ' . $cnt . '.', ['update', 'data' => $values]);
+        self::emailer()->getLogger()->debug(
+            'UPDATE `' . static::tableName() . '` => affected rows ' . $cnt . '.',
+            ['update', 'data' => self::loggedValues($values)]
+        );
 
         return $cnt;
     }
@@ -186,7 +206,7 @@ abstract class AbstractRepository
 
         self::emailer()->getLogger()->debug(
             'UPDATE `' . static::tableName() . '` => affected rows ' . $cnt . '.',
-            ['update', 'data' => $data, 'criteria' => $criteria]
+            ['update', 'data' => self::loggedValues($data), 'criteria' => self::loggedValues($criteria)]
         );
 
         return $cnt;

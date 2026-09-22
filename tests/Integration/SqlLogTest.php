@@ -90,6 +90,72 @@ class SqlLogTest extends IntegrationCase
     }
 
     /**
+     * The INSERT / UPDATE log lines, context included (their context is not a
+     * bare tag, so sqlRecords() never sees them).
+     *
+     * @return list<array{string, string, array<mixed>}>
+     */
+    private function writeRecords(): array
+    {
+        $out = [];
+        foreach ($this->logger->records as $r) {
+            if (in_array($r['context'][0] ?? null, ['insert', 'update'], true)) {
+                $out[] = [$r['level'], $r['message'], $r['context']];
+            }
+        }
+        return $out;
+    }
+
+    private function writeRows(): void
+    {
+        $id = Repository\Email::insert(['email' => 'user@example.com', 'name' => 'Jane', 'project_id' => 1]);
+        Repository\Email::updateById($id, ['name' => 'Joan']);
+        Repository\Email::update(['name' => 'Jill'], ['email' => 'user@example.com']);
+    }
+
+    /**
+     * Row values are personal data: without `params` the INSERT / UPDATE
+     * context names the columns only.
+     */
+    public function testInsertUpdateContextCarriesColumnNamesOnlyByDefault(): void
+    {
+        $this->wire();
+
+        $this->writeRows();
+
+        self::assertSame([
+            ['debug', 'INSERT INTO `email` => #1.', ['insert', 'data' => ['email', 'name', 'project_id']]],
+            ['debug', 'UPDATE `email` => affected rows 1.', ['update', 'data' => ['name']]],
+            ['debug', 'UPDATE `email` => affected rows 1.', ['update', 'data' => ['name'], 'criteria' => ['email']]],
+        ], $this->writeRecords());
+    }
+
+    /**
+     * `params` brings the values back; `level` does not apply to these lines,
+     * they stay at debug.
+     */
+    public function testInsertUpdateContextCarriesValuesWithParams(): void
+    {
+        $this->wire(['level' => 'info', 'params' => true]);
+
+        $this->writeRows();
+
+        self::assertSame([
+            [
+                'debug',
+                'INSERT INTO `email` => #1.',
+                ['insert', 'data' => ['email' => 'user@example.com', 'name' => 'Jane', 'project_id' => 1]],
+            ],
+            ['debug', 'UPDATE `email` => affected rows 1.', ['update', 'data' => ['name' => 'Joan']]],
+            [
+                'debug',
+                'UPDATE `email` => affected rows 1.',
+                ['update', 'data' => ['name' => 'Jill'], 'criteria' => ['email' => 'user@example.com']],
+            ],
+        ], $this->writeRecords());
+    }
+
+    /**
      * A non-UTF-8 bound value must not break logging (plain json_encode would
      * return false and drop every parameter).
      */
