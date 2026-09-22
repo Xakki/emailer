@@ -1,10 +1,11 @@
 # Reusable image for running the test/static-analysis tool-chain locally,
-# mirroring the CI matrix. Build with --build-arg PHP_VERSION=8.4 or 8.5.
+# mirroring the CI matrix. Build with --build-arg PHP_VERSION=8.4 or 8.5
+# (`make test-ci-build [PHP_VERSION=8.5]` does it with the resource caps).
 #
-#   docker build -f docker/ci/Dockerfile --build-arg PHP_VERSION=8.5 -t emailer-test:8.5 .
-#   docker run --rm -v "$PWD":/app -w /app emailer-test:8.5 \
+#   docker build -f docker/ci/Dockerfile --build-arg PHP_VERSION=8.4 -t emailer-test:8.4 .
+#   docker run --rm -v "$PWD":/app -w /app emailer-test:8.4 \
 #       sh -c "composer install && composer cs-check && composer phpstan && composer test"
-ARG PHP_VERSION=8.5
+ARG PHP_VERSION=8.4
 FROM php:${PHP_VERSION}-cli
 
 RUN apt-get update && apt-get install -y --no-install-recommends \

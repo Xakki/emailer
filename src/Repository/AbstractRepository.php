@@ -58,6 +58,38 @@ abstract class AbstractRepository
 
     abstract protected static function tableName(): string;
 
+    /**
+     * Single sink for the SQL this layer logs, so the `sql_log` config
+     * (ConfigService) applies to every statement. Default: debug, bare SQL.
+     * With `params` the bound values are appended as `<sql> | <json>`;
+     * the flags keep a non-UTF-8 value from turning the whole JSON into false.
+     *
+     * @param array<int|string, mixed> $params
+     */
+    private static function logSql(string $sql, array $params, string $tag = 'query'): void
+    {
+        $emailer = self::emailer();
+        $config = $emailer->getConfig()->sql_log;
+        if ($config['params']) {
+            $sql .= ' | ' . json_encode($params, JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+        }
+        $emailer->getLogger()->log($config['level'], $sql, [$tag]);
+    }
+
+    /**
+     * Row / criteria values for the INSERT / UPDATE log context: the values
+     * with `sql_log.params`, otherwise only the column names (the values are
+     * personal data). Only `params` applies here — those lines keep their own
+     * debug level and message by design, `sql_log.level` is for SQL text.
+     *
+     * @param array<string, mixed> $values
+     * @return array<string, mixed>|list<string>
+     */
+    private static function loggedValues(array $values): array
+    {
+        return self::emailer()->getConfig()->sql_log['params'] ? $values : array_keys($values);
+    }
+
     protected static function getDb(): Connection
     {
         return self::emailer()->getDb();
@@ -117,7 +149,10 @@ abstract class AbstractRepository
             $id = $values[static::pkName()] ?? (int)static::getDb()->lastInsertId();
         }
 
-        self::emailer()->getLogger()->debug('INSERT INTO `' . static::tableName() . '` => #' . $id . '.', ['insert', 'data' => $values]);
+        self::emailer()->getLogger()->debug(
+            'INSERT INTO `' . static::tableName() . '` => #' . $id . '.',
+            ['insert', 'data' => self::loggedValues($values)]
+        );
 
         if (!$id) {
             throw new Exception\Exception('Cant insert data');
@@ -150,7 +185,10 @@ abstract class AbstractRepository
 
         $cnt = (int) static::getDb()->update(static::tableName(), $values, [static::pkName() => $id], $types);
 
-        self::emailer()->getLogger()->debug('UPDATE `' . static::tableName() . '` => affected rows ' . $cnt . '.', ['update', 'data' => $values]);
+        self::emailer()->getLogger()->debug(
+            'UPDATE `' . static::tableName() . '` => affected rows ' . $cnt . '.',
+            ['update', 'data' => self::loggedValues($values)]
+        );
 
         return $cnt;
     }
@@ -168,7 +206,7 @@ abstract class AbstractRepository
 
         self::emailer()->getLogger()->debug(
             'UPDATE `' . static::tableName() . '` => affected rows ' . $cnt . '.',
-            ['update', 'data' => $data, 'criteria' => $criteria]
+            ['update', 'data' => self::loggedValues($data), 'criteria' => self::loggedValues($criteria)]
         );
 
         return $cnt;
@@ -233,7 +271,7 @@ abstract class AbstractRepository
             $q .= ' FOR UPDATE';
         }
 
-        self::emailer()->getLogger()->debug($q, ['query']);
+        self::logSql($q, $query->getParameters());
 
         $row = self::getDb()->fetchAssociative($q, $query->getParameters(), $query->getParameterTypes());
         if ($row) {
@@ -299,7 +337,7 @@ abstract class AbstractRepository
      */
     public static function getModelsByQuery(QueryBuilder $query): Generator
     {
-        self::emailer()->getLogger()->debug($query->getSQL(), ['query']);
+        self::logSql($query->getSQL(), $query->getParameters());
         $result = $query->executeQuery();
         while ($row = $result->fetchAssociative()) {
             yield static::validate($row);
@@ -340,7 +378,7 @@ abstract class AbstractRepository
             $query->andWhere($k . '=:' . $k);
             $query->setParameter($k, $val);
         }
-        self::emailer()->getLogger()->debug($query->getSQL(), ['delete']);
+        self::logSql($query->getSQL(), $query->getParameters(), 'delete');
         // DBAL 4: write statements must go through executeStatement(), not executeQuery().
         return (int) $query->executeStatement();
     }

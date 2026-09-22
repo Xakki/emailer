@@ -74,7 +74,15 @@ $config = new ConfigService([
 | `redis`      | `emailer-redis:6379`          | Used for MX / auth caches                         |
 | `route`      | built‑in tracking routes      | Phroute route → `[Controller, method]` map        |
 | `migration`  | `src/Migration`               | Doctrine Migrations config                        |
+| `retry`      | `max_attempts` 5, `first_delay` 900, `max_delay` 86400 | Backoff for temporary failures (see below); integers (integer numeric strings such as env values are cast), validated at construction |
+| `sql_log`    | `level` `debug`, `params` false | Logging of the SQL the repository layer runs: `level` is a lower-case PSR‑3 `LogLevel` value; `params: true` appends the bound values as JSON (`<sql> \| <json>`) and puts the column values into the INSERT / UPDATE log context (default: column names only; those lines stay at `debug`). Boolean-like strings (env `"1"`, `"true"`, `"0"`) are cast; validated at construction |
 | `secret_key` | `''` (disabled)               | Guards the read‑only body accessor                |
+
+> **`sql_log.params` puts bound values into your logs** — the SQL parameters
+> and the row / criteria values of every INSERT / UPDATE: e‑mail addresses,
+> names and other personal data. Enable it only where the log sink is allowed
+> to hold that data (e.g. `'sql_log' => ['level' => 'info', 'params' => true]`
+> for debugging), and keep the default elsewhere.
 
 ## Usage
 
@@ -125,10 +133,52 @@ A runnable end‑to‑end example lives in [`example/as-vendor/init.php`](exampl
 ### Processing the queue (console)
 
 ```bash
-./console send         # send pending messages from the queue
+./console send [N]     # send up to N new messages from the queue (default 1)
+./console reSend [N]   # retry up to N temporarily failed messages whose retry time has come
 ./console newDay       # reset per-day transport counters (run daily via cron)
 ./console migrations migrate
 ```
+
+Schedule all three via cron. **Without `reSend` nothing is ever retried**:
+temporarily failed messages wait in `TEMP_ERROR` forever.
+
+```cron
+* * * * *     cd /path/to/app && ./console send 100
+*/15 * * * *  cd /path/to/app && ./console reSend 100
+0 0 * * *     cd /path/to/app && ./console newDay
+```
+
+**Retries.** A temporary failure — a 4xx / greylisting / connection error, an
+SMTP authentication failure, or a transient infrastructure exception (Redis
+down, DB deadlock / lock wait timeout / lost connection) — puts the message in
+`TEMP_ERROR` with `queue.retry_at` set on a geometric schedule: with the
+defaults, 5 attempts in total, waits of 900 s, ~69 min, ~5.2 h and 24 h. After
+`max_attempts` the message becomes a terminal `ERROR`. Any other failure is
+terminal at once. The `reSend` interval is the practical floor for
+`first_delay`.
+
+**Transport pause.** When a transport cannot be used at all — the SMTP
+connect, TLS or AUTH step fails — the rest of that transport's messages are not
+attempted in the current `send` / `reSend` run (they keep their state); other
+transports continue. This includes direct-MX mode (`host` = `localhost`): one
+unreachable recipient MX pauses the transport for the run. A rejection later
+in the dialogue (MAIL FROM / RCPT / DATA) never pauses the transport, whatever
+its text.
+
+**Delivery guarantee: at most once.** A message is claimed (`RUN`) in a short
+transaction before the SMTP dialogue, which runs outside any transaction. If
+the process dies mid‑send, or the result cannot be stored (DB gone), the
+message stays in `RUN` instead of being sent twice. Such rows are not picked up
+automatically: check rows with `status = 1` older than a few minutes against
+the SMTP logs and `queue_data.last_error`, then set `status` to `0` (send
+again) or `-20` (give up).
+
+### Upgrading
+
+Run `./console migrations migrate` **before** deploying a new version of the
+code. The queue code writes `queue.retry_at` (`Version20260921140000`); without
+that column every temporary failure becomes a terminal `ERROR` (its
+`last_error` names `retry_at`) and `reSend` fails on every run.
 
 ### HTTP tracking endpoints
 
@@ -162,7 +212,12 @@ make build
 make up
 ```
 
-See the [`Makefile`](Makefile) for `migrations-*`, `phpunit`, `phpstan`, `cs-*` targets.
+[`.env_dist`](.env_dist) holds the committed defaults for both `docker compose` and
+the `Makefile` (ports, container CPU/memory caps, `PHP_VERSION`); the Makefile reads
+`.env_dist` first and `.env` second, so a local `.env` wins and `make VAR=value` wins
+over both. Make consumes the values verbatim — leave them unquoted.
+
+See `make help` for the available targets.
 
 ## Development & quality
 
@@ -177,6 +232,18 @@ composer test-coverage # PHPUnit + HTML/text coverage (needs Xdebug or PCOV)
 composer phpstan       # PHPStan level 7 (src + tests)
 composer cs-check      # PSR-12 strict (squizlabs/php_codesniffer)
 composer cs-fix        # auto-fix style
+```
+
+Without a local PHP, the same gates run in a throwaway container built from
+[`docker/ci/Dockerfile`](docker/ci/Dockerfile). It defaults to PHP 8.4 — the
+supported floor, which is also what PHPStan and Composer resolve against — and
+`PHP_VERSION` switches it to the other matrix version:
+
+```bash
+make test-ci-build                  # PHP 8.4 image (emailer-test:8.4)
+make test-ci                        # composer install + PHPUnit
+make test-ci-build PHP_VERSION=8.5
+make test-ci PHP_VERSION=8.5
 ```
 
 Current line coverage is **~70%**. Tests live in [`tests/`](tests/) and split into

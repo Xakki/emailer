@@ -32,11 +32,19 @@ class Queue extends AbstractModel
         self::QUEUE_STATUS_UNSUBSCRIBE => 'unsubscribe',
         self::QUEUE_STATUS_SKIP => 'skip',
         self::QUEUE_STATUS_QUOTA => 'quota',
+        self::QUEUE_STATUS_SPAM => 'spam',
         self::QUEUE_STATUS_INVALID_MAIL => 'invalid email',
         self::QUEUE_STATUS_INVALID_SMTP => 'invalid smtp',
         self::QUEUE_STATUS_INVALID_DOMAIN => 'invalid domain',
         self::QUEUE_STATUS_ERROR => 'default error',
         self::QUEUE_STATUS_TEMP_ERROR => 'temporary error',
+    ];
+
+    public const array REPEATABLE_STATUS = [
+        self::QUEUE_STATUS_QUOTA => 1,
+        self::QUEUE_STATUS_SPAM => 1,
+        self::QUEUE_STATUS_ERROR => 1,
+        self::QUEUE_STATUS_TEMP_ERROR => 1,
     ];
 
     public int $id;
@@ -45,6 +53,7 @@ class Queue extends AbstractModel
     public ?string $readed;
     public int $status;
     public int $retry;
+    public ?string $retry_at = null;
     public int $project_id;
     public int $campaign_id;
     public int $notify_id;
@@ -299,13 +308,7 @@ class Queue extends AbstractModel
 
     public function isStatusPossibleRepeat(): bool
     {
-        $list = [
-            self::QUEUE_STATUS_QUOTA => 1,
-            self::QUEUE_STATUS_SPAM => 1,
-            self::QUEUE_STATUS_ERROR => 1,
-            self::QUEUE_STATUS_TEMP_ERROR => 1,
-        ];
-        return isset($list[$this->status]);
+        return isset(self::REPEATABLE_STATUS[$this->status]);
     }
 
     /**

@@ -309,7 +309,7 @@
         "securitySchemes": {
             "token": {
                 "type": "apiKey",
-                "name": "Authorization",
+                "name": "x-token",
                 "in": "header"
             }
         }

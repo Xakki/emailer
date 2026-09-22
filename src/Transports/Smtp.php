@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Xakki\Emailer\Transports;
 
+use PHPMailer\PHPMailer\Exception as PHPMailerException;
 use PHPMailer\PHPMailer\PHPMailer;
 use Xakki\Emailer\Cqrs\Domain\GetMxRecord;
 use Xakki\Emailer\Exception;
@@ -71,6 +72,22 @@ class Smtp extends AbstractTransport
         }
     }
 
+    protected function createPhpMailer(): SmtpMailer
+    {
+        return new SmtpMailer(true);
+    }
+
+    /**
+     * MX hosts of the recipient's domain for direct delivery (HOST_LOCAL);
+     * overridable by tests, like createPhpMailer().
+     *
+     * @return array<int, string>
+     */
+    protected function findMx(string $domain): array
+    {
+        return (new GetMxRecord($domain))->handler();
+    }
+
     /**
      * @param Model\Queue $queue
      * @return int
@@ -81,9 +98,10 @@ class Smtp extends AbstractTransport
     public function send(Model\Queue $queue): int
     {
         $this->errorMessage = '';
+        $this->connectionFailure = false;
         $mail = $queue->getMail();
 
-        $phpMailer = new PHPMailer(true);
+        $phpMailer = $this->createPhpMailer();
         $phpMailer->XMailer = 'EmailService';
         $phpMailer->Timeout = 30;
         $startTime = time();
@@ -109,7 +127,7 @@ class Smtp extends AbstractTransport
             }
 
             $domain = explode('@', $mail->getEmail());
-            $mx = (new GetMxRecord($domain[1]))->handler();
+            $mx = $this->findMx($domain[1]);
             if ($mx) {
                 $phpMailer->Host = implode(';', $mx);
             }
@@ -168,10 +186,33 @@ class Smtp extends AbstractTransport
             $phpMailer->addCustomHeader($k, $r);
         }
 
+        if (!$phpMailer->preSend()) {
+            throw new PHPMailerException($phpMailer->ErrorInfo ?: 'SMTP message preparation failed');
+        }
+
+        $html = '';
+        $deliveryBufferLevel = ob_get_level();
         ob_start();
-        $result = $phpMailer->send();
-        $phpMailer->smtpClose();
-        $html = ob_get_clean();
+        try {
+            try {
+                $phpMailer->connect();
+            } catch (PHPMailerException $exception) {
+                // Connect / TLS / AUTH failed before anything was handed over:
+                // treated as transport-wide for every transport, direct-MX
+                // (HOST_LOCAL) included — the rest of the run skips it.
+                $this->connectionFailure = true;
+                throw $exception;
+            }
+            $result = $phpMailer->postSend();
+        } catch (PHPMailerException $exception) {
+            $this->errorMessage = $phpMailer->ErrorInfo ?: $exception->getMessage() ?: 'SMTP delivery failed';
+            $result = false;
+        } finally {
+            $phpMailer->smtpClose();
+            if (ob_get_level() === $deliveryBufferLevel + 1) {
+                $html = (string) ob_get_clean();
+            }
+        }
 
         if ($html) {
             $html = preg_replace('/<br\/?>(\r\n|\n\r|\n|\r)?/ui', PHP_EOL, $html);
@@ -192,7 +233,7 @@ class Smtp extends AbstractTransport
             $this->emailer->getLogger()->notice('Slow', $logContext);
         }
         if (!$result) {
-            return $this->getSmtpErrorStatus($phpMailer->ErrorInfo);
+            return $this->getSmtpErrorStatus($this->errorMessage);
         }
 
         unset($phpMailer);

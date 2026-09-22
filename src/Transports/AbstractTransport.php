@@ -17,6 +17,7 @@ abstract class AbstractTransport implements \Stringable
     public string $replyName = '';
 
     protected string $errorMessage = '';
+    protected bool $connectionFailure = false;
     /** @var array<mixed> */
     protected static array $statusWordKey = [
         // YANDEX = Message rejected under suspicion of SPAM
@@ -99,16 +100,31 @@ abstract class AbstractTransport implements \Stringable
 
     public function getSmtpErrorStatus(string $mess): int
     {
+        $status = Queue::QUEUE_STATUS_ERROR;
         // https://yandex.ru/support/mail-new/web/letter/create.html
         // https://mail.qip.ru/support/
         // SPAM CHECK
         // http://mxtoolbox.com/
-        foreach (self::$statusWordKey as $word => $status) {
+        foreach (self::$statusWordKey as $word => $wordStatus) {
             if (stripos($mess, (string) $word) !== false) {
-                return $status;
+                $status = $wordStatus;
+                break;
             }
         }
-        return Queue::QUEUE_STATUS_ERROR;
+
+        // Authentication phrases only decide what the table left unclassified
+        // (or already called temporary): a recipient-side rejection mentioning
+        // "DMARC authentication failed" must keep its SPAM / INVALID_* verdict.
+        // This is the row's status only; whether the transport itself is down
+        // is decided by where the failure happened (isConnectionFailure()).
+        if ($status === Queue::QUEUE_STATUS_ERROR || $status === Queue::QUEUE_STATUS_TEMP_ERROR) {
+            foreach (['Could not authenticate', 'authentication failed', 'authentication failure'] as $phrase) {
+                if (stripos($mess, $phrase) !== false) {
+                    return Queue::QUEUE_STATUS_TEMP_ERROR;
+                }
+            }
+        }
+        return $status;
     }
 
     public static function fromString(string $json, Emailer $emailer): self
@@ -145,6 +161,19 @@ abstract class AbstractTransport implements \Stringable
     public function getError(): string
     {
         return $this->errorMessage;
+    }
+
+    /**
+     * Whether the last send() failed while connecting to / logging in to the
+     * SMTP server — relay or direct MX (connect, TLS, AUTH) — before the
+     * message was handed over: the transport is treated as unusable (host
+     * down, bad credentials, locked account), not just this message — see
+     * Console's per-run transport pause.
+     * A rejection later in the dialogue never sets it, whatever its text.
+     */
+    public function isConnectionFailure(): bool
+    {
+        return $this->connectionFailure;
     }
 
     /**

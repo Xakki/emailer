@@ -9,12 +9,22 @@ use Xakki\Emailer\Exception\DataNotFound;
 use Xakki\Emailer\Model\Queue;
 use Xakki\Emailer\Repository;
 
-class ExecuteQueue extends AbstractQueue
+class RepeatQueue extends AbstractQueue
 {
     public function __construct(Emailer $emailer, array $skipIds = [], array $skipTransportIds = [])
     {
         $this->emailer = $emailer;
-        $row = Repository\Queue::findOneByStatus(Queue::QUEUE_STATUS_NEW, true, $skipIds, $skipTransportIds);
+        // Repository\Queue::findOneForRepeat() (not Model\Queue::findOne(), which
+        // only supports =/IN) so the retry_at <= now scheduling condition — the
+        // guard that keeps the legacy backlog (retry_at IS NULL) unselected — can
+        // be expressed at all.
+        $row = Repository\Queue::findOneForRepeat(
+            Queue::QUEUE_STATUS_TEMP_ERROR,
+            $this->now(),
+            true,
+            $skipIds,
+            $skipTransportIds,
+        );
         if (!$row) {
             $e = new DataNotFound('Not found data');
             $e->httpCode = 0;

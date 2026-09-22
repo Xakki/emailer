@@ -1,6 +1,7 @@
-## Unidoski
+## emailer console jobs
 SHELL=/bin/bash
 BASH_ENV=/etc/environment
 
 #* * * * * /app/console send > /dev/null
+#*/15 * * * * /app/console reSend 100 > /dev/null
 1 0 * * * /app/console newDay > /dev/null

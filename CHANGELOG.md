@@ -15,6 +15,24 @@ follow [Semantic Versioning](https://semver.org/).
   under `docker/ci/`.
 - Open‑source project files: `LICENSE` (GPL‑3.0‑or‑later), `README`, `CONTRIBUTING`,
   this changelog.
+- Scheduled retries: `./console reSend [N]` retries `TEMP_ERROR` messages whose
+  `queue.retry_at` is due, on a geometric backoff set by the new `retry` config
+  (`max_attempts` 5, `first_delay` 900, `max_delay` 86400). **Add `reSend` to
+  cron** — without it nothing is retried.
+- Migration `Version20260921140000` adds the nullable `queue.retry_at`
+  (+ index `ix_queue_status_retry_at`). **Run migrations before deploying the
+  code**: without the column every temporary failure becomes a terminal `ERROR`.
+  Rows from before the migration keep `retry_at = NULL` and are never retried.
+- `Exception\CacheUnavailable` (extends `Exception\Exception`), thrown by
+  `Emailer::getCache()` when Redis cannot be reached.
+- `sql_log` config: the level the repository layer logs its SQL at
+  (`level`, a PSR‑3 `LogLevel` value, default `debug`) and whether the bound
+  parameters are appended as JSON (`params`, default `false` →
+  `<sql> | <json>`; boolean-like env strings accepted). Validated at
+  construction. Defaults keep the previous SQL output. `params` also gates
+  the INSERT / UPDATE log context (still `debug`): by default it now carries
+  the column names only, the values only with `params: true`. `params: true`
+  writes e‑mail addresses and other personal data into the logs.
 
 ### Removed
 - Dropped the unmaintained `phroute/phroute` dependency; HTTP routing now uses a
@@ -34,7 +52,44 @@ follow [Semantic Versioning](https://semver.org/).
   work for both names. Removal target: v2.
 
 ### Changed
+- Queue processing (`send` / `reSend`):
+  - SMTP authentication failures and transient exceptions (Redis, DB deadlock /
+    lock wait timeout / lost connection) now go through the retry backoff
+    instead of failing terminally on the first attempt; other exceptions stay
+    terminal `ERROR`.
+  - When a transport's SMTP connect, TLS or AUTH step fails (direct-MX mode
+    included), the transport is paused for the rest of the run: its other
+    messages are left untouched, other transports continue. Rejections after
+    login (MAIL FROM / RCPT / DATA) never pause it, even when their text
+    mentions authentication. A custom
+    transport opts in by setting the protected `$connectionFailure`
+    (`AbstractTransport::isConnectionFailure()`). A paused
+    transport's messages are excluded by the selection query itself, so its
+    backlog adds no query per message to the run.
+  - Transport routing ties (several transports of a project with the same rank)
+    now go to the lowest transport id; the order was unspecified before.
+  - Each message is claimed (`RUN`) in a short transaction and sent outside any
+    transaction (no DB lock held during the SMTP dialogue). Delivery is
+    **at most once**: a crash or a failed result write leaves the row in `RUN`
+    instead of sending it again.
+  - The `retry` config is validated when `ConfigService` is constructed
+    (integers; `max_attempts >= 1`, `first_delay >= 1`,
+    `max_delay >= first_delay`). Integer-valued numeric strings (e.g. raw env
+    `"900"`) are cast to int; other strings (`"900.5"`, `"abc"`) are rejected.
+  - One `'Run queue'` (debug) line per message at start and one `'Send queue'`
+    (info) outcome line with `status`, `retry`, `retry_at`.
+- SMTP error classification: the authentication phrases are checked after the
+  status table, so a SPAM / INVALID_* verdict wins (e.g. "DMARC authentication failed").
+- Migration `Version20260922090000` drops the redundant `ix_queue_status`
+  index (covered by `ix_queue_status_retry_at`).
 - Minimum PHP requirement raised to **>= 8.4**.
+- The whole tool‑chain now targets that floor: the dev image (`docker/php`) and the
+  test image (`docker/ci`) build `FROM php:8.4` (`PHP_VERSION` overrides both, e.g.
+  `make test-ci PHP_VERSION=8.5`, and the tag follows — `emailer-test:<version>`),
+  PHPStan analyses with `phpVersion: 80400`, and Composer resolves against
+  `config.platform.php = 8.4.0`.
+- `Makefile` reads `.env_dist` and then `.env`, so the container CPU/memory caps and
+  `PHP_VERSION` live in the env files; `make VAR=value` still wins over both.
 - Migrated from **doctrine/dbal 3 → 4** (and `doctrine/migrations` ^3.8), bumped
   PHPMailer/Monolog, replaced PHPUnit 10 with 11 and PHPStan 1 with 2.
 - Tests moved from `src/test/phpunit/` to `tests/` (namespace `Xakki\Emailer\Tests\`,
@@ -42,6 +97,10 @@ follow [Semantic Versioning](https://semver.org/).
 - Fixed the `composer.json` `license` field (was a misspelled `llicense: proprietary`).
 
 ### Fixed
+- The console `send` / `reSend` summary no longer warns on a SPAM result
+  (`TITLE_QUEUE_STATUS` gained `spam`; unknown statuses show as `unknown`).
+- A failed `COMMIT` is reported as itself instead of being masked by a
+  `NoActiveTransaction` from the follow‑up `rollBack()`.
 - `Controller\Mail::initQueue` no longer warns / mis‑parses keys without a `-` separator.
 - `Controller\AbstractController::renderImage` reads the MIME type from the file path
   instead of crashing on binary file contents.

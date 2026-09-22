@@ -1,5 +1,7 @@
 # Version: 0.1.0
-FROM php:8.2-fpm
+# Keep in step with composer.json's `php` floor; override per build/stand.
+ARG PHP_VERSION=8.4
+FROM php:${PHP_VERSION}-fpm
 MAINTAINER Xakki <xakki@ya.ru>
 ARG DEBIAN_FRONTEND=noninteractive
 ENV REFRESHED_AT="2023–01–05"
@@ -36,10 +38,14 @@ RUN docker-php-source delete && apt-get autoremove --purge -y && apt-get autocle
 
 RUN echo "access.log = /dev/null" >> /usr/local/etc/php-fpm.d/docker.conf
 
-COPY cronjob /etc/cron.d/
-RUN chmod 0644 /etc/cron.d/cronjob
-RUN crontab /etc/cron.d/cronjob
+# A user crontab (no user field), so it must stay out of /etc/cron.d, whose
+# system-crontab format would reject every line ("bad username").
+COPY cronjob /etc/emailer.crontab
+RUN chmod 0644 /etc/emailer.crontab && crontab /etc/emailer.crontab
 
-STOPSIGNAL SIGKILL
+# SIGQUIT = php-fpm's graceful stop: in-flight requests finish first.
+STOPSIGNAL SIGQUIT
 #printenv > /etc/environment &&
-CMD cron -f && docker-php-entrypoint php-fpm
+# Debian cron daemonizes itself; exec hands PID 1 to php-fpm (with `cron -f`
+# in front, the foreground cron blocked and php-fpm never started).
+CMD ["sh", "-c", "cron && exec docker-php-entrypoint php-fpm"]

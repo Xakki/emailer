@@ -1,5 +1,12 @@
 SHELL = /bin/sh
 
+## Committed defaults first, local overrides second; `make VAR=...` beats both.
+-include .env_dist
+-include .env
+
+## PHP for the test image and the dev stack; `make test-ci PHP_VERSION=8.5`.
+PHP_VERSION ?= 8.4
+
 docker := $(shell command -v docker 2> /dev/null)
 docker-compose:= docker compose
 
@@ -57,12 +64,19 @@ phpstan:
 psalm:
 	$(composer) psalm
 
+## Throwaway swagger-php container (writes src/swagger.json): same CPU/memory
+## caps (CI_CPUS / CI_MEMORY) and invoking-user run as the test-ci runner. The
+## image's /docker-entrypoint.sh is root-only (0711), so call openapi directly.
 swagger-generate:
-	docker run -v "${PWD}/src":/app -it tico/swagger-php /app/Controller/Api --output swagger.json
+	$(docker) run --rm --cpus $(CI_CPUS) --memory $(CI_MEMORY) --user "$$(id -u):$$(id -g)" \
+		--entrypoint /tmp/vendor/bin/openapi -v "$(CURDIR)/src":/app tico/swagger-php \
+		/app/Controller/Api --output swagger.json
 
 ## https://github.com/swagger-api/swagger-ui/blob/master/docs/usage/installation.md
 swagger-ui:
-	docker run --rm --name uni-swagger --network default-network -p 82:8181 -e SWAGGER_JSON=/app/swagger.json -v src:/app swaggerapi/swagger-ui
+	$(docker) run --rm --cpus $(SWAGGER_UI_CPUS) --memory $(SWAGGER_UI_MEMORY) --user "$$(id -u):$$(id -g)" \
+		--name uni-swagger --network default-network -e BASE_URL=/api-docs \
+		-e SWAGGER_JSON=/app/swagger.json -v "$(CURDIR)/src":/app:ro swaggerapi/swagger-ui
 
 cs-fix:
 	$(php) sh -l -c "git diff --name-only --diff-filter=AM master | grep .php | xargs composer cs-fix"
@@ -87,4 +101,32 @@ migrations-create:
 
 migrations-status:
 	$(php) sh -l -c "./console migrations status"
+
+## Non-interactive test runner
+test-ci-build:
+	$(docker) build --resource memory=$(CI_BUILD_MEMORY) --resource cpu-quota=$(CI_BUILD_CPU_QUOTA) \
+		-f docker/ci/Dockerfile --build-arg PHP_VERSION=$(PHP_VERSION) -t emailer-test:$(PHP_VERSION) .
+
+## Throwaway CI container: CPU/memory capped (override CI_CPUS / CI_MEMORY) and
+## run as the invoking user so vendor/ and the caches stay owned by you; HOME
+## points composer's home/cache at the container's /tmp.
+
+ci-run = $(docker) run --rm --cpus $(CI_CPUS) --memory $(CI_MEMORY) --user "$$(id -u):$$(id -g)" \
+	-e HOME=/tmp -v "$(CURDIR)":/app -w /app emailer-test:$(PHP_VERSION)
+
+test-ci:
+	$(ci-run) sh -c "composer install --no-interaction --prefer-dist --no-progress && vendor/bin/phpunit -c phpunit.xml"
+
+## make test-ci-filter filter=testSomething — same runner, one test/pattern (fast
+## red/green checks; vendor/ already installed by a prior test-ci run so this skips it).
+test-ci-filter:
+	$(ci-run) sh -c "vendor/bin/phpunit -c phpunit.xml --filter '$(filter)'"
+
+## Same throwaway-container runner as test-ci, for the static-analysis gates
+## (no long-lived `emailer-php`/`emailer-mariadb` stack needed).
+test-ci-phpstan:
+	$(ci-run) sh -c "composer install --no-interaction --prefer-dist --no-progress && vendor/bin/phpstan analyse --memory-limit 1G"
+
+test-ci-cs-check:
+	$(ci-run) sh -c "composer install --no-interaction --prefer-dist --no-progress && vendor/bin/phpcs"
 
